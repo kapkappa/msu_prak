@@ -1,85 +1,59 @@
-#include <stdio.h>
 #include <stdlib.h>
-#include <ctype.h>
+#include <stdio.h>
 
-typedef struct node list;
+#define N 10
 
-struct node{
-	int numb;
-	list *next;
-};
-
-void insert(list* prev, list* lt, int num)
+void remap(int a[N])
 {
-	if(lt == NULL)
+	int i;
+	int FLAG = 1;
+	for(i=0;i<N;i++)
 	{
-		list* new = (list*)malloc(sizeof(list));
-		new->next = NULL;
-		new->numb = num;
-		lt = new;
-		prev->next=lt;
-	}
-	else
-	{
-		if(lt->numb < num) insert(prev->next, lt->next, num);
-		else
+		if(a[i]>0)
 		{
-			list*new = (list*)malloc(sizeof(list));
-			new->next = lt;
-			new->numb = num;
-			prev->next = new;
+			int k;
+			for(k=i;k<N && a[k]>0;k++);
+			if(k<N)
+			{
+				int tmp = a[k];
+				a[k] = a[i];
+				a[i] = tmp;
+			}else FLAG=0;
 		}
+		if(!FLAG) break;
+	}
+	int j;
+	for(j=0;j<i;j++)
+	{
+		if(a[j]==0)
+		{
+			int k;
+			for(k=j;k<i && a[k] == 0;k++);
+			if(k<i)
+			{
+				int tmp = a[k];
+				a[k] = a[j];
+				a[j] = tmp;
+			}else FLAG = -1;
+		}
+		if(FLAG == -1) j=i;
 	}
 }
 
-void vivod(list* lt)
+int main()
 {
-	printf("Vivod:  ");
-	list* tmp = NULL;
-	tmp = lt;
-	while(tmp!=NULL)
+	int *mas = (int*)malloc(N * sizeof(int));
+	int i;
+	for(i=0;i<N;i++)
 	{
-		printf("%d ", tmp->numb);
-		tmp = tmp->next;
+		scanf("%d", mas+i);
 	}
 	printf("\n");
-}
-
-void delet(list*lt)
-{
-	if(lt->next != NULL) delet(lt->next);
-	free(lt);
-}
-
-int main(int argc, char**argv)
-{
-	list* head = (list*)malloc(sizeof(list));
-	head->next = NULL;
-	int c, number = 0, flag = 0, sign = 1;
-	FILE* f = NULL;
-	if(argc==2) f = fopen(argv[1],"r");
-	while ( ( (f != NULL) && ( (c=fgetc(f)) != EOF) ) || ( (c=getchar()) != '\n') )
+	remap(mas);
+	for(i=0;i<N;i++)
 	{
-		if (isdigit(c))
-		{
-			number =  number * 10 + c - '0';
-			flag = 1;
-		}
-		else
-		{
-			if(flag)
-			{
-				if (!sign) number*= -1;
-				insert(head, head->next, number);
-			}
-			flag = 0;
-			number = 0;
-			sign = c != '-';
-		}
+		printf("%d  ", mas[i]);
 	}
-	if (flag) insert(head, head->next, number);
-	vivod(head->next);
-	delet(head);
-	if(f!=NULL) fclose(f);
-	return 0;
+	printf("\n");
+	free(mas);
 }
