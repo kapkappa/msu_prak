@@ -1,3 +1,3 @@
-MSU PRAK
+ < MSU PRAK >
 
 3 sem
