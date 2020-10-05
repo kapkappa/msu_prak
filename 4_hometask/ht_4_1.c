@@ -11,21 +11,23 @@ int main(int argc, char**argv)
 	FILE *f2 = fopen(argv[2], "r");
 	if(f1==NULL || f2==NULL){fprintf(stderr, "Cant read from file\n"); return 1;}
 	//
-	int size1 = 32, size2 = 32;
+	int size1 = 8, size2 = 8;
 	char*str1 = (char*)malloc(size1 * sizeof(char));
 	char*str2 = (char*)malloc(size2 * sizeof(char));
-	int cmp=0, F;
-	while( (F = (fgets(str1, size1-1, f1) == NULL) + (fgets(str2, size2-1, f2) == NULL)) < 1)
+	int cmp=0, F, slen1, slen2;
+	while(!cmp && (F = (fgets(str1, size1, f1) == NULL) + (fgets(str2, size2, f2) == NULL)) == 0)
 	{
-		while(str1[strlen(str1)-1] != '\n')
+		while(str1[(slen1 = strlen(str1))-1] != '\n')
 		{
 			size1 *= 2;
 			str1 = realloc(str1, size1 * sizeof(char));
+			fgets(str1+slen1, size1-slen1, f1);
 		}
-		while(str2[strlen(str2)-1] != '\n')
+		while(str2[(slen2 = strlen(str2))-1] != '\n')
 		{
 			size2 *= 2;
 			str2 = realloc(str2, size2 * sizeof(char));
+			fgets(str2+slen2, size2-slen2, f2);
 		}
 		cmp = strcmp(str1, str2);
 	}
