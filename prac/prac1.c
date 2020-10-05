@@ -64,13 +64,14 @@ T* add_word(T *Tree, char *word)
 	return Tree;
 }
 
-void vivod(T *Tree, FILE *f)
+void vivod(T *Tree, FILE *f, int cnt)
 {
 	if(Tree!=NULL)
 	{
-		vivod(Tree->left, f);
-		fprintf(f, "%s : %d\n", Tree->word, Tree->count);
-		vivod(Tree->right, f);
+		vivod(Tree->left, f, cnt);
+		double all = (double)Tree->count / (double)cnt;
+		fprintf(f, "%s %d %f\n", Tree->word, Tree->count, all);
+		vivod(Tree->right, f, cnt);
 	}
 }
 
@@ -110,17 +111,20 @@ int main(int argc, char**argv)
 			if(fout==NULL){fprintf(stderr, OUTERR); exit(1);}
 		}
 	}
-
+	int cnt = 0;
 	char *word = NULL;
 	T *Head_tree = NULL;
 	while(!feof(fin))
 	{
 		word = getword(fin);
 		Head_tree = add_word(Head_tree, word);
+		cnt++;
 	}
-
-	vivod(Head_tree, fout);
+	printf("%d\n",cnt);
+	vivod(Head_tree, fout, cnt);
 	delet(Head_tree);
 	free(Head_tree);
+	fclose(fin);
+	fclose(fout);
 	return 0;
 }
