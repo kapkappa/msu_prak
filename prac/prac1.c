@@ -7,6 +7,7 @@
 #define OUTERR "Error, cant open the output file!\n"
 
 typedef struct tree T;
+typedef struct list list;
 
 struct tree {
 	char* word;
@@ -15,13 +16,43 @@ struct tree {
 	struct tree *right;
 };
 
+struct list {
+	char* word;
+	int count;
+	struct list *next;
+};
+
+list * add_word_to_list(T *Tree, list *Node)
+{
+	if(Node==NULL)
+	{
+		Node = (list*)malloc(sizeof(list));
+		Node->next = NULL;
+		Node->word = Tree->word;
+		Node->count = Tree->count;
+	}
+	else if(Tree->count < Node->count)
+	{
+		Node->next = add_word_to_list(Tree, Node->next);
+	}
+	else
+	{
+		list*New_Node = (list*)malloc(sizeof(list));
+		New_Node->word = Tree->word;
+		New_Node->count = Tree->count;
+		New_Node->next = Node;
+		Node = New_Node;
+	}
+	return Node;
+}
+
 char* getword(FILE *f)
 {
 	int size = 4, i=0;
 	char *word = (char*)malloc(size * sizeof(char));
 	char c;
 	while(isspace(c=fgetc(f)) || iscntrl(c)); //Skipping Delimiters
-	while(isalnum(c))//Пока нужный нам символ - записываем.
+	while(isalnum(c))
 	{
 		word[i++] = c;
 		if((i+1) == size)
@@ -64,14 +95,25 @@ T* add_word(T *Tree, char *word)
 	return Tree;
 }
 
-void vivod(T *Tree, FILE *f, int cnt)
+list * T_to_L(T *Tree, list*Head)
 {
 	if(Tree!=NULL)
 	{
-		vivod(Tree->left, f, cnt);
-		double all = (double)Tree->count / (double)cnt;
-		fprintf(f, "%s %d %f\n", Tree->word, Tree->count, all);
-		vivod(Tree->right, f, cnt);
+		Head = T_to_L(Tree->left, Head);
+		Head = T_to_L(Tree->right, Head);
+		Head = add_word_to_list(Tree, Head);
+	}
+	return Head;
+}
+
+void Lprint(list *Head, FILE *f, int cnt)
+{
+	if(Head!=NULL)
+	{
+		double all = (double)Head->count / (double)cnt;
+		fprintf(f, "%s %d %f\n", Head->word, Head->count, all);
+		Lprint(Head->next, f, cnt);
+		free(Head);
 	}
 }
 
@@ -120,8 +162,10 @@ int main(int argc, char**argv)
 		Head_tree = add_word(Head_tree, word);
 		cnt++;
 	}
-	printf("%d\n",cnt);
-	vivod(Head_tree, fout, cnt);
+	list*Head=NULL;
+	Head = T_to_L(Head_tree, Head);
+	Lprint(Head, fout, cnt);
+
 	delet(Head_tree);
 	free(Head_tree);
 	fclose(fin);
