@@ -1,6 +1,7 @@
-first line
-second line
+it is the first line of this file.
+this is the second line of this file.
+And this is the third equal line of this file.
 
-
-third line
-
+Its the fourth line
+end
+end
