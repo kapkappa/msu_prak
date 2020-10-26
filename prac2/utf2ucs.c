@@ -47,20 +47,18 @@ int main(int argc, char**argv)
 	fin = stdin;
 	fout = stdout;
 	int byte_order = 2;				 // LE is set defoult
-	if(argc==2)
+	if(argc > 1)
 	{
 		fin = fopen(argv[1], "r");
 		if(!fin){perror("Can't read from the input file"); exit(1);}
+		read_utf_bom(fin);			// Skip UTF-BOM
+		if(argc>2)
+		{
+			byte_order = read_ucs_bom(argv[2]);
+			fout = fopen(argv[2], "a");
+			if(!fout){perror("Can't open or create output file"); exit(1);}
+		}
 	}
-	else if(argc>2)
-	{
-		fin = fopen(argv[1], "r");
-		if(!fin){perror("Can't read from the input file"); exit(1);}
-		byte_order = read_ucs_bom(argv[2]);
-		fout = fopen(argv[2], "a");
-		if(!fout){perror("Can't open or create output file"); exit(1);}
-	}
-	read_utf_bom(fin);
 	unsigned char first, second, third;
 	unsigned char part1, part2;
 
@@ -148,4 +146,5 @@ int main(int argc, char**argv)
 	}
 	fclose(fin);
 	fclose(fout);
+	return 0;
 }
