@@ -52,7 +52,7 @@ int main(int argc, char** argv)
 	FILE *fin, *fout;
 	fin = stdin;
 	fout = stdout;
-	int byte_order = 2; //LE - is set defoult.
+	int byte_order = 2; //LE - is set default.
 	if(argc > 1)
 	{
 		fin = fopen(argv[1], "r");
