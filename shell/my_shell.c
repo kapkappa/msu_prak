@@ -4,6 +4,16 @@
 #include <ctype.h>
 #include <sys/wait.h>
 #include <string.h>
+#include <time.h>
+
+#define RESET "\e[m"
+#define RED "\e[1;31m"
+#define GREEN "\e[1;32m"
+#define YELLOW "\e[1;33m"
+#define BLUE "\e[1;34m"
+#define MAGENTA "\e[1;35m"
+#define CYAN "\e[1;36m"
+#define COLOURS 6
 
 typedef struct node
 {
@@ -14,6 +24,14 @@ typedef struct node
 short eoflag = 0;
 short Qflag = 0;
 short Newlineflag = 0;
+char*colour[COLOURS] = {RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN};
+
+char*get_random_colour()
+{
+	srand(time(NULL));
+	int num = rand() % COLOURS;
+	return colour[num];
+}
 
 char**list_to_mas(node*list)
 {
@@ -162,10 +180,11 @@ int run(node*list)
 int main(int argc, char **argv)
 {
 	char*w = NULL;
+	char*col = get_random_colour();
 	node*list = NULL;
 	while(!eoflag)
 	{
-		printf(">");
+		printf("%s> %s", col, RESET);
 		Newlineflag = 0;
 		list = NULL;
 		while(!eoflag && !Newlineflag)
@@ -180,6 +199,6 @@ int main(int argc, char **argv)
 //		if(list) print(list);
 		delet(list);
 	}
-	printf("\nBye\n");
+	printf("\n%s Bye! %s\n", col, RESET);
 	return 0;
 }
