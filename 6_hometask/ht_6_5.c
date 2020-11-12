@@ -29,7 +29,6 @@ void item_a(int argc, char**argv)
 		perror("Item a, first exec");
 		exit(1);
 	}
-	wait(NULL);
 	dup2(fd[0], fread);
 	close(fd[0]);
 	close(fd[1]);
@@ -45,7 +44,6 @@ void item_a(int argc, char**argv)
 		perror("Item a, second exec");
 		exit(1);
 	}
-	wait(NULL);
 	dup2(fd[0], fread);
 	close(fd[0]);
 	close(fd[1]);
@@ -57,8 +55,8 @@ void item_a(int argc, char**argv)
 		perror("Item a, third exec");
 		exit(1);
 	}
-	wait(NULL);
 	close(fread);
+	while(wait(NULL)!=-1);
 }
 
 void item_b(int argc, char**argv)
@@ -80,7 +78,6 @@ void item_b(int argc, char**argv)
 		perror("Item b, first exec");
 		exit(1);
 	}
-	wait(NULL);
 	if((p=fork())==0)
 	{
 		dup2(fd[0], 0);
@@ -98,9 +95,9 @@ void item_b(int argc, char**argv)
 		perror("Item b, second exec");
 		exit(1);
 	}
-	wait(NULL);
 	close(fd[0]);
 	close(fd[1]);
+	while(wait(NULL)!=-1);
 }
 
 void item_c(int argc, char**argv)
@@ -130,7 +127,6 @@ void item_c(int argc, char**argv)
 		perror("Item c, first exec");
 		exit(1);
 	}
-	wait(NULL);
 	if((p=fork())==0)
 	{
 		dup2(fd[0], 0);
@@ -140,9 +136,9 @@ void item_c(int argc, char**argv)
 		perror("Item c, third exec");
 		exit(1);
 	}
-	wait(NULL);
 	close(fd[0]);
 	close(fd[1]);
+	while(wait(NULL)!=-1);
 }
 
 void item_d(int argc, char**argv)
@@ -201,7 +197,6 @@ void item_e(int argc, char**argv)
 		perror("Item d, first exec");
 		exit(1);
 	}
-	wait(NULL);
 	dup2(fd[0], fread);
 	close(fd[0]);
 	close(fd[1]);
@@ -217,7 +212,6 @@ void item_e(int argc, char**argv)
 		perror("Item e, second exec");
 		exit(1);
 	}
-	wait(NULL);
 	dup2(fd[0], fread);
 	close(fd[0]);
 	close(fd[1]);
@@ -237,8 +231,8 @@ void item_e(int argc, char**argv)
 		perror("Item e, third exec");
 		exit(1);
 	}
-	wait(NULL);
 	close(fread);
+	while(wait(NULL)!=-1);
 }
 
 void item_f(int argc, char**argv)
@@ -260,7 +254,6 @@ void item_f(int argc, char**argv)
 		perror("Item f, first exec");
 		exit(1);
 	}
-	wait(NULL);
 	if((p=fork())==0)
 	{
 		int f = open(argv[4], O_WRONLY | O_APPEND | O_CREAT, 0664);
@@ -278,9 +271,9 @@ void item_f(int argc, char**argv)
 		perror("Item f, second exec");
 		exit(1);
 	}
-	wait(NULL);
 	close(fd[0]);
 	close(fd[1]);
+	while(wait(NULL)!=-1);
 }
 
 void item_g(int argc, char**argv)
@@ -309,7 +302,6 @@ void item_g(int argc, char**argv)
 		perror("Item g, second exec");
 		exit(1);
 	}
-	wait(NULL);
 	if((p=fork())==0)
 	{
 		dup2(fd[0], 0);
@@ -327,9 +319,9 @@ void item_g(int argc, char**argv)
 		perror("Item g, third exec");
 		exit(1);
 	}
-	wait(NULL);
 	close(fd[0]);
 	close(fd[1]);
+	while(wait(NULL)!=-1);
 }
 
 int main(int argc, char**argv)
