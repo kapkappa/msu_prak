@@ -21,6 +21,15 @@ typedef struct node
 	char *word;
 }node;
 
+typedef struct tree
+{
+	node *command;
+	struct tree *left;
+	struct tree *right;
+	int Wr;
+	int Rd;
+}tree;
+
 short eoflag = 0;
 short Qflag = 0;
 short Newlineflag = 0;
@@ -28,7 +37,8 @@ short Specflag = 0;
 
 char*colour[COLOURS] = {RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN};
 
-char*spec_symbols="<>|&";
+char*dup_spec_symbols = ">|&";
+char*one_spec_symbols = "<;";
 
 char*get_random_colour()
 {
@@ -88,6 +98,7 @@ void delet(node *list)
 char*readword()
 {
 	int size = 16, indx = 0;
+	Specflag = 0;
 	char*word = (char*)malloc(sizeof(char) * size);
 	char c=0;
 	while((c=getchar())!= EOF)
@@ -116,18 +127,39 @@ char*readword()
 		{
 			Qflag = 1;
 		}
-		else if(strchr(spec_symbols, c))					// c == '<' || c=='>' || c=='>>' || c=='|'
+		else if(strchr(one_spec_symbols, c))
+		{
+			if(indx)
+			{
+				ungetc(c, stdin);
+				word[indx]=0;
+				return word;
+			}
+			else
+			{
+				word[0] = c;
+				word[1] = 0;
+				return word;
+			}
+		}
+		else if(strchr(dup_spec_symbols, c))
 		{
 			if(Specflag)
 			{
-				Specflag = 0;
-				word[1] = c;
-				word[2] = 0;
+				if(word[0] == c)
+				{
+					word[1] = c;
+					word[2] = 0;
+				}
+				else
+				{
+					ungetc(c, stdin);
+					word[1] = 0;
+				}
 				return word;
 			}
 			else if(indx)
 			{
-				Specflag = 0;
 				ungetc(c, stdin);
 				word[indx] = 0;
 				return word;
@@ -138,7 +170,6 @@ char*readword()
 		}
 		else if(Specflag)
 		{
-			Specflag = 0;
 			ungetc(c, stdin);
 			word[1] = 0;
 			return word;
@@ -169,7 +200,7 @@ void check_exit(node*list)
 	if(!strcmp(list->word, "exit"))
 	{
 		delet(list);
-		printf("\n%s Exit %s\n", col, RESET);
+		printf("\n Exit \n");
 		exit(0);
 	}
 }
@@ -227,7 +258,7 @@ int main(int argc, char **argv)
 		if(Qflag)
 		{
 			fprintf(stderr, "Wrong numbers of quotes!\n");
-			Qflag = 0
+			Qflag = 0;
 			delet(list);
 			continue;
 		}
