@@ -192,6 +192,13 @@ int main(int argc, char **argv)
 			w = readword();
 			if(w[0]!=0)	list = insert(list, w);
 		}
+		if(Qflag)
+		{
+			Qflag = 0;
+			delet(list);
+			fprintf(stderr, "Wrong number of quotes!\n");
+			continue;
+		}
 		if(!eoflag && list)
 		{
 			run(list);

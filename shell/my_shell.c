@@ -24,7 +24,11 @@ typedef struct node
 short eoflag = 0;
 short Qflag = 0;
 short Newlineflag = 0;
+short Specflag = 0;
+
 char*colour[COLOURS] = {RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN};
+
+char*spec_symbols="<>|&";
 
 char*get_random_colour()
 {
@@ -112,6 +116,33 @@ char*readword()
 		{
 			Qflag = 1;
 		}
+		else if(strchr(spec_symbols, c))					// c == '<' || c=='>' || c=='>>' || c=='|'
+		{
+			if(Specflag)
+			{
+				Specflag = 0;
+				word[1] = c;
+				word[2] = 0;
+				return word;
+			}
+			else if(indx)
+			{
+				Specflag = 0;
+				ungetc(c, stdin);
+				word[indx] = 0;
+				return word;
+			}
+			//First symbol is special
+			Specflag = 1;
+			word[indx++] = c;
+		}
+		else if(Specflag)
+		{
+			Specflag = 0;
+			ungetc(c, stdin);
+			word[1] = 0;
+			return word;
+		}
 		else
 		{
 			indx++;
@@ -138,7 +169,7 @@ void check_exit(node*list)
 	if(!strcmp(list->word, "exit"))
 	{
 		delet(list);
-		printf("Exit\n");
+		printf("\n%s Exit %s\n", col, RESET);
 		exit(0);
 	}
 }
@@ -190,7 +221,14 @@ int main(int argc, char **argv)
 		while(!eoflag && !Newlineflag)
 		{
 			w = readword();
-			if(w[0]!=0)	list = insert(list, w);
+			if(w[0]!=0) list = insert(list, w);
+		}
+		if(Qflag)
+		{
+			fprintf(stderr, "Wrong numbers of quotes!\n");
+			Qflag = 0
+			delet(list);
+			continue;
 		}
 		if(!eoflag && list)
 		{
