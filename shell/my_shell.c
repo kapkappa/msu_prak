@@ -23,7 +23,7 @@ typedef struct node
 
 typedef struct tree
 {
-	node *command;
+	node *argv;
 	struct tree *left;
 	struct tree *right;
 	int Wr;
@@ -34,6 +34,7 @@ short eoflag = 0;
 short Qflag = 0;
 short Newlineflag = 0;
 short Specflag = 0;
+short Pipeflag = 0;
 
 char*colour[COLOURS] = {RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN};
 
@@ -49,16 +50,16 @@ char*get_random_colour()
 
 char**list_to_mas(node*list)
 {
-	char**argv = (char**)malloc(sizeof(char*));
+	char**result = (char**)malloc(sizeof(char*));
 	int i = 0;
 	while(list)
 	{
-		argv[i++] = list->word;
-		argv = realloc(argv, sizeof(char*) * (i+1));
+		result[i++] = list->word;
+		result = realloc(result, sizeof(char*) * (i+1));
 		list=list->next;
 	}
-	argv[i] = NULL;
-	return argv;
+	result[i] = NULL;
+	return result;
 }
 
 node*insert(node*list, char*word)
@@ -74,12 +75,12 @@ node*insert(node*list, char*word)
 	return list;
 }
 
-void print(node*list)
+void print_list(node*list)
 {
 	if(list)
 	{
-		printf("%s\n",list->word);
-		print(list->next);
+		printf("%s  ",list->word);
+		print_list(list->next);
 	}
 }
 
@@ -92,6 +93,15 @@ void delet(node *list)
 		free(list->word);
 		free(list);
 		list=tmp;
+	}
+}
+
+void delet_list(node *list)
+{
+	if(list)
+	{
+		delet_list(list->next);
+		free(list);
 	}
 }
 
@@ -216,13 +226,13 @@ int check_cd(char**argv)
 	else return 0;
 }
 
-int run(node*list)
+int do_list(node*list)
 {
 	check_exit(list);
-	char**argv = list_to_mas(list);
-	if(check_cd(argv))
+	char**args = list_to_mas(list);
+	if(check_cd(args))
 	{
-		free(argv);
+		free(args);
 		return 0;
 	}
 
@@ -230,25 +240,117 @@ int run(node*list)
 	int status;
 	if((p=fork())==0)
 	{
-		execvp(argv[0], argv);
+		execvp(args[0], args);
 		perror("Command error");
 		exit(1);
 	}
 	wait(&status);
-	free(argv);
+	free(args);
 	return 0;
 }
+
+tree*create_node(char*word)
+{
+	tree*res=(tree*)malloc(sizeof(tree));
+	res->right = NULL;
+	res->left = NULL;
+	res->argv = NULL;
+	res->argv = insert(res->argv, word);
+	res->Wr = 0;
+	res->Rd = Pipeflag;
+	return res;
+}
+
+tree*add_node(tree*res, char*word)
+{
+	if(!res)
+	{
+		res = create_node(word);
+		return res;
+	}
+	tree*tmp = res;
+	if(!strcmp(word, ";"))
+	{
+		//ПЕРЕВЕРНУТЬ ДЕРЕВО
+		Specflag = 1;
+	}
+	else if(!strcmp(word, "||") || !strcmp(word, "&&"))
+	{
+		//ПЕРЕВЕРНУТЬ ДЕРЕВО
+		Specflag = 1;
+	}
+	else if(!strcmp(word, "|"))
+	{
+		if(Specflag) return NULL;
+		Specflag = 1;
+		Pipeflag = 1;
+	}
+	else	//NEED FLAG OF IF THERE WERE SPECIAL SYMBOL BEFORE, IF SO THEN IT IS COMMAND OTHERWISE IT IS AN ARGUMENT
+	{
+		while(tmp->right) tmp=tmp->right;
+		if(Specflag)
+		{
+			tmp->Wr = Pipeflag;
+			tmp->right = create_node(word);
+			Specflag = 0;
+			Pipeflag = 0;
+		}
+		else tmp->argv = insert(tmp->argv, word);
+		return res;
+	}
+	return res;
+}
+
+tree*maketree(node*list)
+{
+	tree*res = NULL;
+	while(list)
+	{
+		res = add_node(res, list->word);
+		if(!res) return NULL;
+		list = list->next;
+	}
+	return res;
+}
+
+void print_tree(tree*T)
+{
+	if(T)
+	{
+		print_tree(T->left);
+		printf("Rd: %d ", T->Rd);
+		print_list(T->argv);
+		printf(" Wr: %d", T->Wr);
+		printf("\n");
+		print_tree(T->right);
+	}
+}
+
+void delet_tree(tree*T)
+{
+	if(T)
+	{
+		delet_tree(T->left);
+		delet_tree(T->right);
+		delet_list(T->argv);
+		free(T);
+	}
+}
+
+
 
 int main(int argc, char **argv)
 {
 	char*w = NULL;
 	char*col = get_random_colour();
-	node*list = NULL;
+	node*list;
+	tree *root;
 	while(!eoflag)
 	{
 		printf("%s> %s", col, RESET);
 		Newlineflag = 0;
 		list = NULL;
+		root = NULL;
 		while(!eoflag && !Newlineflag)
 		{
 			w = readword();
@@ -264,9 +366,13 @@ int main(int argc, char **argv)
 		}
 		if(!eoflag && list)
 		{
-			run(list);
+			root = maketree(list);
+			print_tree(root);
+			printf("\n\nrun:\n\n");
+//			if(root) do_tree(root);
+			do_list(list);
 		}
-//		if(list) print(list);
+		delet_tree(root);
 		delet(list);
 	}
 	printf("\n%s Bye! %s\n", col, RESET);
