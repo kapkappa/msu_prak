@@ -222,6 +222,7 @@ int main(int argc, char **argv)
 		{
 			w = readword();
 			if(w[0]!=0) list = insert(list, w);
+			else free(w);
 		}
 		if(Qflag)
 		{
