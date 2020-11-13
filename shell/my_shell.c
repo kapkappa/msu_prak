@@ -5,6 +5,9 @@
 #include <sys/wait.h>
 #include <string.h>
 #include <time.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #define RESET "\e[m"
 #define RED "\e[1;31m"
@@ -35,17 +38,24 @@ short Qflag = 0;
 short Newlineflag = 0;
 short Specflag = 0;
 short Pipeflag = 0;
+short Success = 0;
+short Semicolon = 0;
 
-char*colour[COLOURS] = {RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN};
+char*Colour[COLOURS] = {RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN};
 
 char*dup_spec_symbols = ">|&";
 char*one_spec_symbols = "<;";
+
+node*List;
+tree*Root;
+
+void delet_tree(tree*);
 
 char*get_random_colour()
 {
 	srand(time(NULL));
 	int num = rand() % COLOURS;
-	return colour[num];
+	return Colour[num];
 }
 
 char**list_to_mas(node*list)
@@ -209,7 +219,8 @@ void check_exit(node*list)
 {
 	if(!strcmp(list->word, "exit"))
 	{
-		delet(list);
+		delet_tree(Root);
+		delet(List);
 		printf("\n Exit \n");
 		exit(0);
 	}
@@ -221,9 +232,9 @@ int check_cd(char**argv)
 	{
 		if(argv[1]) chdir(argv[1]);
 		else chdir(getenv("HOME"));
-		return 1;
+		return 0;
 	}
-	else return 0;
+	else return 1;
 }
 
 int do_list(node*list)
@@ -261,6 +272,14 @@ tree*create_node(char*word)
 	return res;
 }
 
+void special_node(tree*tmp, char*word)
+{
+	while(tmp->right && !strcmp(tmp->right->argv->word, ";") ) tmp = tmp->right;
+	tree*newnode = create_node(word);
+	newnode->left = tmp->right;
+	tmp->right = newnode;
+}
+
 tree*add_node(tree*res, char*word)
 {
 	if(!res)
@@ -271,12 +290,21 @@ tree*add_node(tree*res, char*word)
 	tree*tmp = res;
 	if(!strcmp(word, ";"))
 	{
-		//ПЕРЕВЕРНУТЬ ДЕРЕВО
+		if(Specflag || Pipeflag) return NULL;
+		res = create_node(word);
+		res->left = tmp;
 		Specflag = 1;
+		Semicolon = 1;
 	}
 	else if(!strcmp(word, "||") || !strcmp(word, "&&"))
 	{
-		//ПЕРЕВЕРНУТЬ ДЕРЕВО
+		if(Specflag || Pipeflag) return NULL;
+		if(Semicolon) special_node(tmp, word);
+		else
+		{
+			res = create_node(word);
+			res->left = tmp;
+		}
 		Specflag = 1;
 	}
 	else if(!strcmp(word, "|"))
@@ -337,43 +365,130 @@ void delet_tree(tree*T)
 	}
 }
 
+//TODO
+int run(tree*T, short pipes)
+{
+	if(!pipes)
+	{
+		check_exit(T->argv);
+		char**args = list_to_mas(T->argv);
+		int cd = check_cd(args);
+		if(!cd) return 0;
+//		int fd1 = getfout;
+//		int fd0 = getfin;
+		pid_t p;
+		if((p=fork())==0)
+		{
+			//SON
+			execvp(args[0], args);
+			perror("comand exec err");
+			//TODO FREE EVERYTHING!!!
+			delet_tree(Root);
+			delet(List);
+			free(args);
+			exit(1);
+		}
+		free(args);
+		wait(NULL);
+		return 0;
+	}
+	else							// <<< P I P E >>>
+	{
+		pid_t p;
+		int fd[2];
+		pipe(fd);
+		if((p=fork())==0)
+		{
+			//SON
+			char**arguments = list_to_mas(T->argv);
+			execvp(arguments[0], arguments);
+			perror("pipe comand exec err");
+			free(arguments);
+			//TODO FREE EVERYTHING!!!
+			exit(1);
+		}
+		return 0;
+	}
+}
 
+//TODO
+void do_tree(tree*T)
+{
+	if(T)
+	{
+		printf("WORD: %s\n",T->argv->word);
+		if(!strcmp(T->argv->word, ";"))
+		{
+			do_tree(T->left);
+			do_tree(T->right);
+		}
+		else if(!strcmp(T->argv->word, "||"))
+		{
+			do_tree(T->left);
+			if(!Success)
+			do_tree(T->right);
+		}
+		else if(!strcmp(T->argv->word, "&&"))
+		{
+			printf("&&\n");
+			do_tree(T->left);
+			printf("Success = %d\n", Success);
+			if(Success)
+			do_tree(T->right);
+		}
+		else
+		{
+			tree*tmp=T;
+			short pipes = 0;
+			while(tmp)
+			{
+				pipes+=tmp->Wr;
+				tmp = tmp->right;
+			}
+			Success = !(run(T, pipes));
+			printf("Exit status: %d\n", Success);
+		}
+	}
+}
 
 int main(int argc, char **argv)
 {
 	char*w = NULL;
 	char*col = get_random_colour();
-	node*list;
-	tree *root;
 	while(!eoflag)
 	{
 		printf("%s> %s", col, RESET);
 		Newlineflag = 0;
-		list = NULL;
-		root = NULL;
+		Specflag = 0;
+		Pipeflag = 0;
+		Semicolon = 0;
+		List = NULL;
+		Root = NULL;
 		while(!eoflag && !Newlineflag)
 		{
 			w = readword();
-			if(w[0]!=0) list = insert(list, w);
+			if(w[0]!=0) List = insert(List, w);
 			else free(w);
 		}
 		if(Qflag)
 		{
 			fprintf(stderr, "Wrong numbers of quotes!\n");
 			Qflag = 0;
-			delet(list);
+			delet(List);
 			continue;
 		}
-		if(!eoflag && list)
+		if(!eoflag && List)
 		{
-			root = maketree(list);
-			print_tree(root);
+			Root = maketree(List);
+			print_tree(Root);
+			printf("ROOT_WORD: %s\n", Root->argv->word);
 			printf("\n\nrun:\n\n");
-//			if(root) do_tree(root);
-			do_list(list);
+			if(Root) do_tree(Root);
+			else fprintf(stderr, "Wrong sequence of spec symbols\n");
+//			do_list(list);
 		}
-		delet_tree(root);
-		delet(list);
+		delet_tree(Root);
+		delet(List);
 	}
 	printf("\n%s Bye! %s\n", col, RESET);
 	return 0;
