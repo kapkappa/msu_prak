@@ -40,6 +40,7 @@ short Specflag = 0;
 short Pipeflag = 0;
 short Success = 0;
 short Semicolon = 0;
+short Badtree = 0;
 
 char*Colour[COLOURS] = {RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN};
 
@@ -290,7 +291,11 @@ tree*add_node(tree*res, char*word)
 	tree*tmp = res;
 	if(!strcmp(word, ";"))
 	{
-		if(Specflag || Pipeflag) return NULL;
+		if(Specflag || Pipeflag)
+		{
+			Badtree = 1;
+			return res;
+		}
 		res = create_node(word);
 		res->left = tmp;
 		Specflag = 1;
@@ -298,7 +303,11 @@ tree*add_node(tree*res, char*word)
 	}
 	else if(!strcmp(word, "||") || !strcmp(word, "&&"))
 	{
-		if(Specflag || Pipeflag) return NULL;
+		if(Specflag || Pipeflag)
+		{
+			Badtree = 1;
+			return res;
+		}
 		if(Semicolon) special_node(tmp, word);
 		else
 		{
@@ -309,7 +318,11 @@ tree*add_node(tree*res, char*word)
 	}
 	else if(!strcmp(word, "|"))
 	{
-		if(Specflag) return NULL;
+		if(Specflag)
+		{
+			Badtree = 1;
+			return res;
+		}
 		Specflag = 1;
 		Pipeflag = 1;
 	}
@@ -335,7 +348,7 @@ tree*maketree(node*list)
 	while(list)
 	{
 		res = add_node(res, list->word);
-		if(!res) return NULL;
+		if(Badtree) return res;			//break
 		list = list->next;
 	}
 	return res;
@@ -462,6 +475,7 @@ int main(int argc, char **argv)
 		Specflag = 0;
 		Pipeflag = 0;
 		Semicolon = 0;
+		Badtree = 0;
 		List = NULL;
 		Root = NULL;
 		while(!eoflag && !Newlineflag)
@@ -480,12 +494,17 @@ int main(int argc, char **argv)
 		if(!eoflag && List)
 		{
 			Root = maketree(List);
-			print_tree(Root);
-			printf("ROOT_WORD: %s\n", Root->argv->word);
-			printf("\n\nrun:\n\n");
-			if(Root) do_tree(Root);
-			else fprintf(stderr, "Wrong sequence of spec symbols\n");
-//			do_list(list);
+			if(Badtree)
+			{
+				fprintf(stderr, "Wrong sequence of spec symbols\n");
+			}
+			else
+			{
+				print_tree(Root);
+				printf("ROOT_WORD: %s\n", Root->argv->word);
+				printf("\n\nrun:\n\n");
+				do_tree(Root);
+			}
 		}
 		delet_tree(Root);
 		delet(List);
