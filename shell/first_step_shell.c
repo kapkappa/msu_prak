@@ -21,6 +21,8 @@ typedef struct node
 	char *word;
 }node;
 
+node*list = NULL;
+
 short eoflag = 0;
 short Qflag = 0;
 short Newlineflag = 0;
@@ -170,6 +172,8 @@ int run(node*list)
 	{
 		execvp(argv[0], argv);
 		perror("Command error");
+		free(argv);
+		delet(list);
 		exit(1);
 	}
 	wait(&status);
@@ -181,7 +185,6 @@ int main(int argc, char **argv)
 {
 	char*w = NULL;
 	char*col = get_random_colour();
-	node*list = NULL;
 	while(!eoflag)
 	{
 		printf("%s> %s", col, RESET);
@@ -204,7 +207,6 @@ int main(int argc, char **argv)
 		{
 			run(list);
 		}
-//		if(list) print(list);
 		delet(list);
 	}
 	printf("\n%s Bye! %s\n", col, RESET);
