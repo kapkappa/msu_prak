@@ -378,6 +378,83 @@ void delet_tree(tree*T)
 	}
 }
 
+//TODO	variant " < t.txt ls ", i.e. command starts with file-input specification
+int getfilein(tree*T)
+{
+	int fdin = 0;
+	node*list=T->argv;
+	node*prev=list;
+	while(list)
+	{
+		if(!strcmp(list->word, "<"))
+		{
+			//WE FOUND IT!!!
+			if(!list->next)
+			{
+				//ERROR!!!
+				fprintf(stderr, "There is no input file\n");
+				return -1;
+			}
+			else
+			{
+				prev->next = list->next;
+				free(list);
+				list=prev->next;
+
+				fdin = open(list->word, O_RDONLY);
+				if(fdin == -1)
+				{
+					perror("Input file err");
+					return -1;
+				}
+				prev->next = list->next;
+				free(list);
+				return fdin;
+			}
+		}
+		prev=list;
+		list = list->next;
+	}
+	return fdin;
+}
+
+int getfileout(tree*T)
+{
+	int fdout = 1;
+	node*list=T->argv;
+	node*prev=list;
+	while(list)
+	{
+		if(!strcmp(list->word, ">"))
+		{
+			if(!list->next)
+			{
+				fprintf(stderr, "There is no output file\n");
+				return -1;
+			}
+			else
+			{
+				prev->next = list->next;
+				free(list);
+				list=prev->next;
+
+				fdout = open(list->word, O_WRONLY | O_CREAT | O_TRUNC, 0664);
+				if(fdout == -1)
+				{
+					perror("Output file err");
+					return -1;
+				}
+				prev->next = list->next;
+				free(list);
+				return fdout;
+			}
+		}
+		prev=list;
+		list = list->next;
+	}
+	return fdout;
+}
+
 //TODO
 int run(tree*T, short pipes)
 {
@@ -387,12 +464,16 @@ int run(tree*T, short pipes)
 		char**args = list_to_mas(T->argv);
 		int cd = check_cd(args);
 		if(!cd) return 0;
-//		int fd1 = getfout;
-//		int fd0 = getfin;
+		int fd1 = getfileout(T);
+		int fd0 = getfilein(T);
+		fprintf(stderr, "FILES DESCR: FIN = %d  FOUT = %d\n", fd0, fd1);
+		if(fd0 == -1 || fd1 == -1) return 1;
 		pid_t p;
 		if((p=fork())==0)
 		{
 			//SON
+			if(fd0 != 0){dup2(fd0, 0); close(fd0);}
+			if(fd1 != 1){ dup2(fd1, 1); close(fd1);}
 			execvp(args[0], args);
 			perror("comand exec err");
 			//TODO FREE EVERYTHING!!!
@@ -402,6 +483,8 @@ int run(tree*T, short pipes)
 			exit(1);
 		}
 		free(args);
+		if(fd1 != 1) close(fd1);
+		if(fd0 != 0) close(fd0);
 		wait(NULL);
 		return 0;
 	}
@@ -438,6 +521,7 @@ void do_tree(tree*T)
 		else if(!strcmp(T->argv->word, "||"))
 		{
 			do_tree(T->left);
+			printf("Success = %d\n", Success);
 			if(!Success)
 			do_tree(T->right);
 		}
@@ -458,8 +542,9 @@ void do_tree(tree*T)
 				pipes+=tmp->Wr;
 				tmp = tmp->right;
 			}
+			printf("Pipes = %d\n", pipes);
 			Success = !(run(T, pipes));
-			printf("Exit status: %d\n", Success);
+			printf("Exit status: %d\n", !Success);
 		}
 	}
 }
