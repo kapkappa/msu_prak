@@ -382,35 +382,30 @@ void delet_tree(tree*T)
 int getfilein(tree*T)
 {
 	int fdin = 0;
-	node*list=T->argv;
-	node*prev=list;
+	node*prev=T->argv;
+	node*list=prev->next;
 	while(list)
 	{
 		if(!strcmp(list->word, "<"))
 		{
-			//WE FOUND IT!!!
 			if(!list->next)
 			{
-				//ERROR!!!
 				fprintf(stderr, "There is no input file\n");
 				return -1;
 			}
-			else
-			{
-				prev->next = list->next;
-				free(list);
-				list=prev->next;
+			prev->next = list->next;
+			free(list);
+			list = prev->next;
 
-				fdin = open(list->word, O_RDONLY);
-				if(fdin == -1)
-				{
-					perror("Input file err");
-					return -1;
-				}
-				prev->next = list->next;
-				free(list);
-				return fdin;
+			fdin = open(list->word, O_RDONLY);
+			if(fdin == -1)
+			{
+				perror("Input file err");
+				return -1;
 			}
+			prev->next = list->next;
+			free(list);
+			return fdin;
 		}
 		prev=list;
 		list = list->next;
@@ -422,10 +417,11 @@ int getfilein(tree*T)
 int getfileout(tree*T)
 {
 	int fdout = 1;
-	node*list=T->argv;
-	node*prev=list;
+	node*prev=T->argv;
+	node*list=prev->next;
 	while(list)
 	{
+		fprintf(stderr, "WORD IS: %s\n", list->word);
 		if(!strcmp(list->word, ">"))
 		{
 			if(!list->next)
@@ -433,22 +429,19 @@ int getfileout(tree*T)
 				fprintf(stderr, "There is no output file\n");
 				return -1;
 			}
-			else
-			{
-				prev->next = list->next;
-				free(list);
-				list=prev->next;
+			prev->next = list->next;
+			free(list);
+			list=prev->next;
 
-				fdout = open(list->word, O_WRONLY | O_CREAT | O_TRUNC, 0664);
-				if(fdout == -1)
-				{
-					perror("Output file err");
-					return -1;
-				}
-				prev->next = list->next;
-				free(list);
-				return fdout;
+			fdout = open(list->word, O_WRONLY | O_CREAT | O_TRUNC, 0664);
+			if(fdout == -1)
+			{
+				perror("Output file err");
+				return -1;
 			}
+			prev->next = list->next;
+			free(list);
+			return fdout;
 		}
 		prev=list;
 		list = list->next;
@@ -462,19 +455,23 @@ int run(tree*T, short pipes)
 	if(!pipes)
 	{
 		check_exit(T->argv);
-		char**args = list_to_mas(T->argv);
-		int cd = check_cd(args);
-		if(!cd) return 0;
 		int fd1 = getfileout(T);
 		int fd0 = getfilein(T);
-		fprintf(stderr, "FILES DESCR: FIN = %d  FOUT = %d\n", fd0, fd1);
+		print_list(T->argv);
 		if(fd0 == -1 || fd1 == -1) return 1;
+		char**args = list_to_mas(T->argv);
+		if(!check_cd(args))
+		{
+			if(fd1 != 1) close(fd1);
+			if(fd0 != 0) close(fd0);
+			return 0;
+		}
 		pid_t p;
 		if((p=fork())==0)
 		{
 			//SON
 			if(fd0 != 0){dup2(fd0, 0); close(fd0);}
-			if(fd1 != 1){ dup2(fd1, 1); close(fd1);}
+			if(fd1 != 1){dup2(fd1, 1); close(fd1);}
 			execvp(args[0], args);
 			perror("comand exec err");
 			//TODO FREE EVERYTHING!!!
@@ -588,7 +585,7 @@ int main(int argc, char **argv)
 			{
 				print_tree(Root);
 				printf("ROOT_WORD: %s\n", Root->argv->word);
-				printf("\n\nrun:\n\n");
+				printf("\nrun:\n");
 				do_tree(Root);
 			}
 		}
