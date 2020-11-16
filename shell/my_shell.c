@@ -418,6 +418,7 @@ int getfilein(tree*T)
 	return fdin;
 }
 
+//TODO UNITE THESE FUNCTIONS IN ONE
 int getfileout(tree*T)
 {
 	int fdout = 1;
