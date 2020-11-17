@@ -421,7 +421,6 @@ int getfileout(tree*T)
 	node*list=prev->next;
 	while(list)
 	{
-		fprintf(stderr, "WORD IS: %s\n", list->word);
 		if(!strcmp(list->word, ">"))
 		{
 			if(!list->next)
@@ -456,7 +455,6 @@ int run(tree*T, short pipes)
 		check_exit(T->argv);
 		int fd1 = getfileout(T);
 		int fd0 = getfilein(T);
-		print_list(T->argv);
 		if(fd0 == -1 || fd1 == -1) return 1;
 		char**args = list_to_mas(T->argv);
 		if(!check_cd(args))
@@ -489,7 +487,6 @@ int run(tree*T, short pipes)
 		pid_t p;
 		int fd[2];
 		int fread = dup(0);
-//		char**args = NULL;
 		while(pipes--)
 		{
 			pipe(fd);
@@ -505,7 +502,8 @@ int run(tree*T, short pipes)
 				execvp(args[0], args);
 				perror("pipe command exec err");
 				free(args);
-				//TODO FREE EVERYTHING!!!
+				delet_tree(Root);
+				delet(List);
 				exit(1);
 			}
 			//FATHER
@@ -523,6 +521,8 @@ int run(tree*T, short pipes)
 			execvp(args[0], args);
 			perror("last pipe command exec err");
 			free(args);
+			delet_tree(Root);
+			delet(List);
 			exit(1);
 		}
 		while(wait(NULL) != -1);
@@ -568,7 +568,9 @@ void do_tree(tree*T)
 				tmp = tmp->right;
 			}
 			printf("Pipes = %d\n", pipes);
+			printf("------------------------------------------------------------\n");
 			Success = !(run(T, pipes));
+			printf("------------------------------------------------------------\n");
 			printf("Exit status: %d\n", !Success);
 		}
 	}
@@ -611,8 +613,6 @@ int main(int argc, char **argv)
 			else
 			{
 				print_tree(Root);
-				printf("ROOT_WORD: %s\n", Root->argv->word);
-				printf("run:\n");
 				do_tree(Root);
 			}
 		}
