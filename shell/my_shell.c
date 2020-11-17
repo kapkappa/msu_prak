@@ -421,17 +421,18 @@ int getfileout(tree*T)
 	node*list=prev->next;
 	while(list)
 	{
-		if(!strcmp(list->word, ">"))
+		if(!strcmp(list->word, ">") || !strcmp(list->word, ">>") )
 		{
 			if(!list->next)
 			{
 				fprintf(stderr, "There is no output file\n");
 				return -1;
 			}
+			if(!strcmp(list->word, ">")) fdout = open(list->next->word, O_WRONLY | O_CREAT | O_TRUNC, 0664);
+			else fdout = open(list->next->word, O_WRONLY | O_APPEND | O_CREAT, 0664);
 			prev->next = list->next;
 			free(list);
 			list=prev->next;
-			fdout = open(list->word, O_WRONLY | O_CREAT | O_TRUNC, 0664);
 			if(fdout == -1)
 			{
 				perror("Output file err");
@@ -447,7 +448,43 @@ int getfileout(tree*T)
 	return fdout;
 }
 
-//TODO
+//TODO CHECK!
+int getfile(tree*T, char*direction, int old_fd)
+{
+	int fd = old_fd;
+	node*prev=T->argv;
+	node*list=prev->next;
+	while(list)
+	{
+		if(!strcmp(list->word, direction))
+		{
+			if(!list->next)
+			{
+				fprintf(stderr, "No filename\n");
+				return -1;
+			}
+			if(!strcmp(list->word, "<")) fd = open(list->next->word, O_RDONLY);
+			else if(!strcmp(list->word, ">")) fd = open(list->next->word, O_WRONLY | O_CREAT | O_TRUNC, 0664);
+			else fd = open(list->next->word, O_WRONLY | O_APPEND | O_CREAT, 0664);
+			prev->next = list->next;
+			free(list);
+			list=prev->next;
+			if(fd == -1)
+			{
+				perror("Redirection file err");
+				return -1;
+			}
+			prev->next = list->next;
+			free(list);
+			return fd;
+		}
+		prev = list;
+		list = list->next;
+	}
+	return fd;
+}
+
+//TODO TRY getfile()
 int run(tree*T, short pipes)
 {
 	if(!pipes)
@@ -455,12 +492,15 @@ int run(tree*T, short pipes)
 		check_exit(T->argv);
 		int fd1 = getfileout(T);
 		int fd0 = getfilein(T);
+//		int fd1 = getfile(T, ">", 1);
+//		int fd0 = getfile(T, "<", 0);
 		if(fd0 == -1 || fd1 == -1) return 1;
 		char**args = list_to_mas(T->argv);
 		if(!check_cd(args))
 		{
 			if(fd1 != 1) close(fd1);
 			if(fd0 != 0) close(fd0);
+			free(args);
 			return 0;
 		}
 		pid_t p;
@@ -489,16 +529,23 @@ int run(tree*T, short pipes)
 		int fread = dup(0);
 		while(pipes--)
 		{
+//			check_exit(T->argv);
 			pipe(fd);
 			if((p=fork())==0)
 			{
 				//SON
-				char**args = list_to_mas(T->argv);
 				dup2(fread, 0);
 				dup2(fd[1], 1);
 				close(fread);
 				close(fd[0]);
 				close(fd[1]);
+				int fd1 = getfileout(T);
+				int fd0 = getfilein(T);
+				if(fd0 == -1 || fd1 == -1) return 1;
+				if(fd1 != 1){ dup2(fd1, 1); close(fd1);}
+				if(fd0 != 0){ dup2(fd0, 0); close(fd0);}
+				char**args = list_to_mas(T->argv);
+//				if(!check_cd(args)){ free(args); return 0;}
 				execvp(args[0], args);
 				perror("pipe command exec err");
 				free(args);
@@ -512,12 +559,19 @@ int run(tree*T, short pipes)
 			close(fd[0]);
 			T = T->right;
 		}
+//		check_exit(T->argv);
 		if((p=fork())==0)
 		{
 			//LAST SON
-			char**args = list_to_mas(T->argv);
 			dup2(fread, 0);
 			close(fread);
+			int fd1 = getfileout(T);
+			int fd0 = getfilein(T);
+			if(fd0 == -1 || fd1 == -1) return 1;
+			if(fd1 != 1){ dup2(fd1, 1); close(fd1);}
+			if(fd0 != 0){ dup2(fd0, 0); close(fd0);}
+			char**args=list_to_mas(T->argv);
+//			if(!check_cd(args)) {free(args); return 0;}
 			execvp(args[0], args);
 			perror("last pipe command exec err");
 			free(args);
@@ -530,7 +584,7 @@ int run(tree*T, short pipes)
 	}
 }
 
-//TODO
+//TODO CURRENTLY WORKING ON
 void do_tree(tree*T)
 {
 	if(T)
