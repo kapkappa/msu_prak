@@ -529,7 +529,6 @@ int run(tree*T, short pipes)
 		int fread = dup(0);
 		while(pipes--)
 		{
-//			check_exit(T->argv);
 			pipe(fd);
 			if((p=fork())==0)
 			{
@@ -545,7 +544,6 @@ int run(tree*T, short pipes)
 				if(fd1 != 1){ dup2(fd1, 1); close(fd1);}
 				if(fd0 != 0){ dup2(fd0, 0); close(fd0);}
 				char**args = list_to_mas(T->argv);
-//				if(!check_cd(args)){ free(args); return 0;}
 				execvp(args[0], args);
 				perror("pipe command exec err");
 				free(args);
@@ -559,7 +557,6 @@ int run(tree*T, short pipes)
 			close(fd[0]);
 			T = T->right;
 		}
-//		check_exit(T->argv);
 		if((p=fork())==0)
 		{
 			//LAST SON
@@ -571,7 +568,6 @@ int run(tree*T, short pipes)
 			if(fd1 != 1){ dup2(fd1, 1); close(fd1);}
 			if(fd0 != 0){ dup2(fd0, 0); close(fd0);}
 			char**args=list_to_mas(T->argv);
-//			if(!check_cd(args)) {free(args); return 0;}
 			execvp(args[0], args);
 			perror("last pipe command exec err");
 			free(args);
@@ -579,6 +575,7 @@ int run(tree*T, short pipes)
 			delet(List);
 			exit(1);
 		}
+		close(fread);
 		while(wait(NULL) != -1);
 		return 0;
 	}
