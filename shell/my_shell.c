@@ -185,7 +185,7 @@ char*readword()
 				word[indx] = 0;
 				return word;
 			}
-			//First symbol is special
+			//First symbol in input is special
 			Specflag = 1;
 			word[indx++] = c;
 		}
@@ -432,7 +432,6 @@ int getfileout(tree*T)
 			prev->next = list->next;
 			free(list);
 			list=prev->next;
-
 			fdout = open(list->word, O_WRONLY | O_CREAT | O_TRUNC, 0664);
 			if(fdout == -1)
 			{
@@ -474,7 +473,6 @@ int run(tree*T, short pipes)
 			if(fd1 != 1){dup2(fd1, 1); close(fd1);}
 			execvp(args[0], args);
 			perror("comand exec err");
-			//TODO FREE EVERYTHING!!!
 			delet_tree(Root);
 			delet(List);
 			free(args);
@@ -490,17 +488,44 @@ int run(tree*T, short pipes)
 	{
 		pid_t p;
 		int fd[2];
-		pipe(fd);
+		int fread = dup(0);
+//		char**args = NULL;
+		while(pipes--)
+		{
+			pipe(fd);
+			if((p=fork())==0)
+			{
+				//SON
+				char**args = list_to_mas(T->argv);
+				dup2(fread, 0);
+				dup2(fd[1], 1);
+				close(fread);
+				close(fd[0]);
+				close(fd[1]);
+				execvp(args[0], args);
+				perror("pipe command exec err");
+				free(args);
+				//TODO FREE EVERYTHING!!!
+				exit(1);
+			}
+			//FATHER
+			close(fd[1]);
+			dup2(fd[0], fread);
+			close(fd[0]);
+			T = T->right;
+		}
 		if((p=fork())==0)
 		{
-			//SON
-			char**arguments = list_to_mas(T->argv);
-			execvp(arguments[0], arguments);
-			perror("pipe comand exec err");
-			free(arguments);
-			//TODO FREE EVERYTHING!!!
+			//LAST SON
+			char**args = list_to_mas(T->argv);
+			dup2(fread, 0);
+			close(fread);
+			execvp(args[0], args);
+			perror("last pipe command exec err");
+			free(args);
 			exit(1);
 		}
+		while(wait(NULL) != -1);
 		return 0;
 	}
 }
@@ -513,11 +538,13 @@ void do_tree(tree*T)
 		printf("WORD: %s\n",T->argv->word);
 		if(!strcmp(T->argv->word, ";"))
 		{
+			printf(";\n");
 			do_tree(T->left);
 			do_tree(T->right);
 		}
 		else if(!strcmp(T->argv->word, "||"))
 		{
+			printf("||\n");
 			do_tree(T->left);
 			printf("Success = %d\n", Success);
 			if(!Success)
@@ -585,7 +612,7 @@ int main(int argc, char **argv)
 			{
 				print_tree(Root);
 				printf("ROOT_WORD: %s\n", Root->argv->word);
-				printf("\nrun:\n");
+				printf("run:\n");
 				do_tree(Root);
 			}
 		}
