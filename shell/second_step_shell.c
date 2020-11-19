@@ -539,31 +539,24 @@ int run(tree*T, short pipes)
 	}
 }
 
-//TODO CURRENTLY WORKING ON
 void do_tree(tree*T)
 {
 	if(T)
 	{
-		printf("WORD: %s\n",T->argv->word);
 		if(!strcmp(T->argv->word, ";"))
 		{
-			printf(";\n");
 			do_tree(T->left);
 			do_tree(T->right);
 		}
 		else if(!strcmp(T->argv->word, "||"))
 		{
-			printf("||\n");
 			do_tree(T->left);
-			printf("Success = %d\n", Success);
 			if(!Success)
 			do_tree(T->right);
 		}
 		else if(!strcmp(T->argv->word, "&&"))
 		{
-			printf("&&\n");
 			do_tree(T->left);
-			printf("Success = %d\n", Success);
 			if(Success)
 			do_tree(T->right);
 		}
@@ -576,11 +569,7 @@ void do_tree(tree*T)
 				pipes+=tmp->Wr;
 				tmp = tmp->right;
 			}
-			printf("Pipes = %d\n", pipes);
-			printf("------------------------------------------------------------\n");
 			Success = !(run(T, pipes));
-			printf("------------------------------------------------------------\n");
-			printf("Exit status: %d\n", !Success);
 		}
 	}
 }
@@ -621,7 +610,7 @@ int main(int argc, char **argv)
 			}
 			else
 			{
-				print_tree(Root);
+//				print_tree(Root);
 				do_tree(Root);
 			}
 		}
