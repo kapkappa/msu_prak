@@ -8,7 +8,6 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <signal.h>
 
 #define RESET "\e[m"
 #define RED "\e[1;31m"
@@ -34,8 +33,6 @@ typedef struct tree
 	int Rd;
 }tree;
 
-short crutch = 1;
-
 short eoflag = 0;
 short Qflag = 0;
 short Newlineflag = 0;
@@ -44,14 +41,11 @@ short Pipeflag = 0;
 short Success = 0;
 short Semicolon = 0;
 short Badtree = 0;
-short Appflag = 0;
 
 char*Colour[COLOURS] = {RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN};
 
 char*dup_spec_symbols = ">|&";
 char*one_spec_symbols = "<;";
-
-int*pid_mas;
 
 node*List;
 tree*Root;
@@ -63,57 +57,6 @@ char*get_random_colour()
 	srand(time(NULL));
 	int num = rand() % COLOURS;
 	return Colour[num];
-}
-
-int add_pid(int pid)
-{
-	int i = 1, size = pid_mas[0];
-	while(pid_mas[i] != -1) i++;
-	pid_mas[i] = pid;
-	int result = i;
-	i++;
-	if(i == size)
-	{
-		size *= 2;
-		pid_mas[0] = size;
-		pid_mas = realloc(pid_mas, sizeof(int) * size);
-		for(;i<size;i++) pid_mas[i] = -1;
-	}
-	return result;
-}
-
-void kill_children()
-{
-	int j;
-	for(j=1;j<pid_mas[0];j++)
-		if(pid_mas[j] > 0)
-		{
-//			printf("Send sig to %d\n", pid_mas[j]);
-			kill(pid_mas[j], SIGUSR1);
-			pause();
-			if(pid_mas[j] > 0)
-			{
-				kill(pid_mas[j], SIGKILL);
-				printf("[%d] %d - is killed\n", j, pid_mas[j]);
-			}
-		}
-	return;
-}
-
-int pid_in_mas(int pid)
-{
-	int size = pid_mas[0];
-	int i = 1;
-	while(i < size)
-	{
-		if(pid_mas[i] == pid)
-		{
-			pid_mas[i] = -1;
-			return i;
-		}
-		i++;
-	}
-	return -1;
 }
 
 char**list_to_mas(node*list)
@@ -279,8 +222,6 @@ void check_exit(node*list)
 	{
 		delet_tree(Root);
 		delet(List);
-		kill_children();
-		free(pid_mas);
 		printf("\n Exit \n");
 		exit(0);
 	}
@@ -360,7 +301,7 @@ tree*add_node(tree*res, char*word)
 		Specflag = 1;
 		Semicolon = 1;
 	}
-	else if(!strcmp(word, "||") || !strcmp(word, "&&") || !strcmp(word, "&"))
+	else if(!strcmp(word, "||") || !strcmp(word, "&&"))
 	{
 		if(Specflag || Pipeflag)
 		{
@@ -536,16 +477,13 @@ int run(tree*T, short pipes)
 			delet_tree(Root);
 			delet(List);
 			free(args);
-			free(pid_mas);
 			exit(1);
 		}
 		free(args);
 		if(fd1 != 1) close(fd1);
 		if(fd0 != 0) close(fd0);
-		int status = 0;
-		wait(&status);
-		if(WIFEXITED(status)) return WEXITSTATUS(status);
-		else return -1;
+		wait(NULL);
+		return 0;
 	}
 	else							// <<< P I P E >>>
 	{
@@ -573,7 +511,6 @@ int run(tree*T, short pipes)
 				free(args);
 				delet_tree(Root);
 				delet(List);
-				free(pid_mas);
 				exit(1);
 			}
 			//FATHER
@@ -598,14 +535,11 @@ int run(tree*T, short pipes)
 			free(args);
 			delet_tree(Root);
 			delet(List);
-			free(pid_mas);
 			exit(1);
 		}
 		close(fread);
-		int status = 0;
-		while(wait(&status) != -1);
-		if(WIFEXITED(status)) return WEXITSTATUS(status);
-		else return -1;
+		while(wait(NULL) != -1);
+		return 0;
 	}
 }
 
@@ -630,20 +564,6 @@ void do_tree(tree*T)
 			if(Success)
 			do_tree(T->right);
 		}
-		else if(!strcmp(T->argv->word, "&"))
-		{
-			int p, num;
-			if(!(p = fork()))
-			{
-				do_tree(T->left);
-				exit(0);
-			}
-			else
-			{
-				num = add_pid(p);
-				printf("[%d] %d\n", num, p);
-			}
-		}
 		else
 		{
 			tree*tmp=T;
@@ -658,32 +578,10 @@ void do_tree(tree*T)
 	}
 }
 
-void MY_SIGCHLD(int SIG)
-{
-	int status, pid, i;
-	pid = waitpid(-1, &status, WNOHANG);
-	if(pid > 0)
-	{
-		i = pid_in_mas(pid);
-		if(i>0) printf("[%d]+ Done\n", i);
-	}
-}
-
-void MY_SIGKILL(int SIG)
-{
-	kill_children();
-}
-
 int main(int argc, char **argv)
 {
 	char*w = NULL;
-	pid_mas = NULL;
-	pid_mas = (int*)malloc(sizeof(int) * 2);
-	pid_mas[0] = 2;
-	pid_mas[1] = -1;
 	char*col = get_random_colour();
-	signal(SIGCHLD, MY_SIGCHLD);
-	signal(SIGUSR1, MY_SIGKILL);
 	while(!eoflag)
 	{
 		printf("%s> %s", col, RESET);
@@ -692,28 +590,18 @@ int main(int argc, char **argv)
 		Pipeflag = 0;
 		Semicolon = 0;
 		Badtree = 0;
-		Appflag = 0;
 		List = NULL;
 		Root = NULL;
 		while(!eoflag && !Newlineflag)
 		{
 			w = readword();
-			if(!strcmp(w, "&")) Appflag++;
-			else if(Appflag) Appflag++;
 			if(w[0]!=0) List = insert(List, w);
 			else free(w);
 		}
-		Specflag = 0;
 		if(Qflag)
 		{
 			fprintf(stderr, "Wrong numbers of quotes!\n");
 			Qflag = 0;
-			delet(List);
-			continue;
-		}
-		if(Appflag > 1)
-		{
-			fprintf(stderr, "Wrong use of Appersant (&)\n");
 			delet(List);
 			continue;
 		}
@@ -726,14 +614,13 @@ int main(int argc, char **argv)
 			}
 			else
 			{
+//				print_tree(Root);
 				do_tree(Root);
 			}
 		}
 		delet_tree(Root);
 		delet(List);
 	}
-	kill_children();
-	free(pid_mas);
 	printf("\n%s Bye! %s\n", col, RESET);
 	return 0;
 }

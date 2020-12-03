@@ -542,10 +542,8 @@ int run(tree*T, short pipes)
 		free(args);
 		if(fd1 != 1) close(fd1);
 		if(fd0 != 0) close(fd0);
-		int status = 0;
-		wait(&status);
-		if(WIFEXITED(status)) return WEXITSTATUS(status);
-		else return -1;
+		wait(NULL);
+		return 0;
 	}
 	else							// <<< P I P E >>>
 	{
@@ -602,10 +600,8 @@ int run(tree*T, short pipes)
 			exit(1);
 		}
 		close(fread);
-		int status = 0;
-		while(wait(&status) != -1);
-		if(WIFEXITED(status)) return WEXITSTATUS(status);
-		else return -1;
+		while(wait(NULL) != -1);
+		return 0;
 	}
 }
 
@@ -634,7 +630,7 @@ void do_tree(tree*T)
 		{
 			int p, num;
 			if(!(p = fork()))
-			{
+			{	//SON
 				do_tree(T->left);
 				exit(0);
 			}
