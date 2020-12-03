@@ -34,8 +34,6 @@ typedef struct tree
 	int Rd;
 }tree;
 
-short crutch = 1;
-
 short eoflag = 0;
 short Qflag = 0;
 short Newlineflag = 0;
@@ -95,9 +93,9 @@ void kill_children()
 			{
 				kill(pid_mas[j], SIGKILL);
 				printf("[%d] %d - is killed\n", j, pid_mas[j]);
+				pid_mas[j] = -1;
 			}
 		}
-	return;
 }
 
 int pid_in_mas(int pid)
