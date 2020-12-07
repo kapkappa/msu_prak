@@ -760,6 +760,7 @@ void MY_SIGCHLD(int SIG)
 	pid = waitpid(-1, &status, WNOHANG);
 	if(pid > 0)
 	{
+		printf("HI MARK BLYAT'\n");
 		i = pid_in_mas(pid);
 		if(i>0)
 		{
