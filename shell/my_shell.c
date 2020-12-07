@@ -63,7 +63,7 @@ void delet_tree(tree*);
 char*get_random_colour()
 {
 #ifdef DEBUG
-	fprintf(stderr, "func: %s\n", __func__);
+	fprintf(stderr, "DEBUG func: %s\n", __func__);
 #endif
 	srand(time(NULL));
 	int num = rand() % COLOURS;
@@ -73,7 +73,7 @@ char*get_random_colour()
 void print_pid()
 {
 #ifdef DEBUG
-	fprintf(stderr, "func: %s\n", __func__);
+	fprintf(stderr, "DEBUG func: %s\n", __func__);
 #endif
 	int j;
 	for(j = 1; j < pid_mas[0]; j++)
@@ -84,7 +84,7 @@ void print_pid()
 int add_pid(int pid)
 {
 #ifdef DEBUG
-	fprintf(stderr, "func: %s\n", __func__);
+	fprintf(stderr, "DEBUG func: %s\n", __func__);
 #endif
 	int i = 1, size = pid_mas[0];
 	while(pid_mas[i] != -1) i++;
@@ -104,22 +104,22 @@ int add_pid(int pid)
 void kill_children()
 {
 #ifdef DEBUG
-	fprintf(stderr, "func: %s\n", __func__);
+	fprintf(stderr, "DEBUG func: %s\n", __func__);
 #endif
 	int j;
 	for(j=1;j<pid_mas[0];j++)
 		if(pid_mas[j] > 0)
 		{
-			printf("Im gonna kill u, %d\n", pid_mas[j]);
+//			printf("Im gonna kill u, %d\n", pid_mas[j]);
 			kill(pid_mas[j], SIGKILL);
-			pause();
+//			pause();
 		}
 }
 
 int pid_in_mas(int pid)
 {
 #ifdef DEBUG
-	fprintf(stderr, "func: %s\n", __func__);
+	fprintf(stderr, "DEBUG func: %s\n", __func__);
 #endif
 	int size = pid_mas[0];
 	int i = 1;
@@ -138,7 +138,7 @@ int pid_in_mas(int pid)
 char**list_to_mas(node*list)
 {
 #ifdef DEBUG
-	fprintf(stderr, "func: %s\n", __func__);
+	fprintf(stderr, "DEBUG func: %s\n", __func__);
 #endif
 	char**result = (char**)malloc(sizeof(char*));
 	int i = 0;
@@ -155,7 +155,7 @@ char**list_to_mas(node*list)
 node*insert(node*list, char*word)
 {
 #ifdef DEBUG
-	fprintf(stderr, "func: %s\n", __func__);
+	fprintf(stderr, "DEBUG func: %s\n", __func__);
 #endif
 	if(list==NULL)
 	{
@@ -171,7 +171,7 @@ node*insert(node*list, char*word)
 void print_list(node*list)
 {
 #ifdef DEBUG
-	fprintf(stderr, "func: %s\n", __func__);
+	fprintf(stderr, "DEBUG func: %s\n", __func__);
 #endif
 	if(list)
 	{
@@ -183,7 +183,7 @@ void print_list(node*list)
 void delet(node *list)
 {
 #ifdef DEBUG
-	fprintf(stderr, "func: %s\n", __func__);
+	fprintf(stderr, "DEBUG func: %s\n", __func__);
 #endif
 	node *tmp;
 	while(list)
@@ -198,7 +198,7 @@ void delet(node *list)
 void delet_list(node *list)
 {
 #ifdef DEBUG
-	fprintf(stderr, "func: %s\n", __func__);
+	fprintf(stderr, "DEBUG func: %s\n", __func__);
 #endif
 	if(list)
 	{
@@ -210,7 +210,7 @@ void delet_list(node *list)
 char*readword()
 {
 #ifdef DEBUG
-	fprintf(stderr, "func: %s\n", __func__);
+	fprintf(stderr, "DEBUG func: %s\n", __func__);
 #endif
 	int size = 16, indx = 0;
 	Specflag = 0;
@@ -313,7 +313,7 @@ char*readword()
 void check_exit(node*list)
 {
 #ifdef DEBUG
-	fprintf(stderr, "func: %s\n", __func__);
+	fprintf(stderr, "DEBUG func: %s\n", __func__);
 #endif
 	if(!strcmp(list->word, "exit"))
 	{
@@ -329,7 +329,7 @@ void check_exit(node*list)
 int check_cd(char**argv)
 {
 #ifdef DEBUG
-	fprintf(stderr, "func: %s\n", __func__);
+	fprintf(stderr, "DEBUG func: %s\n", __func__);
 #endif
 	if(!strcmp(argv[0], "cd"))
 	{
@@ -343,7 +343,7 @@ int check_cd(char**argv)
 int do_list(node*list)
 {
 #ifdef DEBUG
-	fprintf(stderr, "func: %s\n", __func__);
+	fprintf(stderr, "DEBUG func: %s\n", __func__);
 #endif
 	check_exit(list);
 	char**args = list_to_mas(list);
@@ -369,7 +369,7 @@ int do_list(node*list)
 tree*create_node(char*word)
 {
 #ifdef DEBUG
-	fprintf(stderr, "func: %s\n", __func__);
+	fprintf(stderr, "DEBUG func: %s\n", __func__);
 #endif
 	tree*res=(tree*)malloc(sizeof(tree));
 	res->right = NULL;
@@ -384,7 +384,7 @@ tree*create_node(char*word)
 void special_node(tree*tmp, char*word)
 {
 #ifdef DEBUG
-	fprintf(stderr, "func: %s\n", __func__);
+	fprintf(stderr, "DEBUG func: %s\n", __func__);
 #endif
 	while(tmp->right && !strcmp(tmp->right->argv->word, ";") ) tmp = tmp->right;
 	tree*newnode = create_node(word);
@@ -395,7 +395,7 @@ void special_node(tree*tmp, char*word)
 tree*add_node(tree*res, char*word)
 {
 #ifdef DEBUG
-	fprintf(stderr, "func: %s\n", __func__);
+	fprintf(stderr, "DEBUG func: %s\n", __func__);
 #endif
 	if(!res)
 	{
@@ -459,7 +459,7 @@ tree*add_node(tree*res, char*word)
 tree*maketree(node*list)
 {
 #ifdef DEBUG
-	fprintf(stderr, "func: %s\n", __func__);
+	fprintf(stderr, "DEBUG func: %s\n", __func__);
 #endif
 	tree*res = NULL;
 	while(list)
@@ -474,7 +474,7 @@ tree*maketree(node*list)
 void print_tree(tree*T)
 {
 #ifdef DEBUG
-	fprintf(stderr, "func: %s\n", __func__);
+	fprintf(stderr, "DEBUG func: %s\n", __func__);
 #endif
 	if(T)
 	{
@@ -490,7 +490,7 @@ void print_tree(tree*T)
 void delet_tree(tree*T)
 {
 #ifdef DEBUG
-	fprintf(stderr, "func: %s\n", __func__);
+	fprintf(stderr, "DEBUG func: %s\n", __func__);
 #endif
 	if(T)
 	{
@@ -504,7 +504,7 @@ void delet_tree(tree*T)
 int getfilein(tree*T)
 {
 #ifdef DEBUG
-	fprintf(stderr, "func: %s\n", __func__);
+	fprintf(stderr, "DEBUG func: %s\n", __func__);
 #endif
 	int fdin = 0;
 	node*prev=T->argv;
@@ -536,7 +536,7 @@ int getfilein(tree*T)
 int getfileout(tree*T)
 {
 #ifdef DEBUG
-	fprintf(stderr, "func: %s\n", __func__);
+	fprintf(stderr, "DEBUG func: %s\n", __func__);
 #endif
 	int fdout = 1;
 	node*prev=T->argv;
@@ -569,7 +569,7 @@ int getfileout(tree*T)
 int catch_them_all(int (*get)(tree*), tree* T)
 {
 #ifdef DEBUG
-	fprintf(stderr, "func: %s\n", __func__);
+	fprintf(stderr, "DEBUG func: %s\n", __func__);
 #endif
 	int counter = 0;
 	int fd, result;
@@ -586,7 +586,7 @@ int catch_them_all(int (*get)(tree*), tree* T)
 int run(tree*T, short pipes)
 {
 #ifdef DEBUG
-	fprintf(stderr, "func: %s\n", __func__);
+	fprintf(stderr, "DEBUG func: %s\n", __func__);
 #endif
 	if(!pipes)
 	{
@@ -709,7 +709,7 @@ int run(tree*T, short pipes)
 void do_tree(tree*T)
 {
 #ifdef DEBUG
-	fprintf(stderr, "func: %s\n", __func__);
+	fprintf(stderr, "DEBUG func: %s\n", __func__);
 #endif
 	if(T)
 	{
@@ -752,30 +752,28 @@ void do_tree(tree*T)
 void MY_SIGCHLD(int SIG)
 {
 #ifdef DEBUG
-	fprintf(stderr, "func: %s\n", __func__);
+	fprintf(stderr, "DEBUG func: %s\n", __func__);
 #endif
-	print_pid();
 	signal(SIGCHLD, MY_SIGCHLD);
 	int status=0, pid, i;
 	pid = waitpid(-1, &status, WNOHANG);
 	if(pid > 0)
 	{
-		printf("HI MARK BLYAT'\n");
 		i = pid_in_mas(pid);
+//		printf("Ind %d Pid %d\n", i, pid);
 		if(i>0)
 		{
 			if(WIFEXITED(status)) printf("[%d]+ Done\n", i);
 			else if(WIFSIGNALED(status)) printf("[%d]+ Terminated\n", i);
+			pid_mas[i] = -1;
 		}
-		pid_mas[i] = -1;
 	}
-	print_pid();
 }
 
 void MY_SIGINT(int SIG)
 {
 #ifdef DEBUG
-	fprintf(stderr, "func: %s\n", __func__);
+	fprintf(stderr, "DEBUG func: %s\n", __func__);
 #endif
 	signal(SIGINT, MY_SIGINT);
 	printf("cur pid is %d \n", cur_pid);
