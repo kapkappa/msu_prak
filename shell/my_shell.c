@@ -44,6 +44,8 @@ short Semicolon = 0;
 short Badtree = 0;
 short Appflag = 0;
 
+int cur_pid = 0;
+
 char*Colour[COLOURS] = {RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN};
 
 char*dup_spec_symbols = ">|&";
@@ -537,7 +539,9 @@ int run(tree*T, short pipes)
 		int status = 0;
 		if(!Appflag)
 		{
+			cur_pid = p;
 			wait(&status);
+			cur_pid = 0;
 			if(WIFEXITED(status)) return WEXITSTATUS(status);
 			else return -1;
 		} else
@@ -577,6 +581,7 @@ int run(tree*T, short pipes)
 				exit(1);
 			}
 			//FATHER
+			if(!Appflag) cur_pid = p;
 			close(fd[1]);
 			dup2(fd[0], fread);
 			close(fd[0]);
@@ -605,7 +610,9 @@ int run(tree*T, short pipes)
 		int status = 0;
 		if(!Appflag)
 		{
+			cur_pid = p;
 			while(wait(&status) != -1);
+			cur_pid = 0;
 			if(WIFEXITED(status)) return WEXITSTATUS(status);
 			else return -1;
 		} else
@@ -659,6 +666,7 @@ void do_tree(tree*T)
 
 void MY_SIGCHLD(int SIG)
 {
+	signal(SIGCHLD, MY_SIGCHLD);
 	int status=0, pid, i;
 	pid = waitpid(-1, &status, WNOHANG);
 	if(pid > 0)
@@ -675,7 +683,13 @@ void MY_SIGCHLD(int SIG)
 
 void MY_SIGINT(int SIG)
 {
-	kill(-1, SIGINT);
+	signal(SIGINT, MY_SIGINT);
+	printf("cur pid is %d \n", cur_pid);
+	if(cur_pid)
+	{
+		kill(cur_pid, SIGINT);
+		cur_pid = 0;
+	}
 }
 
 int main(int argc, char **argv)
