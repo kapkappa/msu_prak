@@ -86,15 +86,9 @@ void kill_children()
 	for(j=1;j<pid_mas[0];j++)
 		if(pid_mas[j] > 0)
 		{
-//			printf("Send sig to %d\n", pid_mas[j]);
-			kill(pid_mas[j], SIGUSR1);
+//			printf("Im gonna kill u, %d\n", pid_mas[j]);
+			kill(pid_mas[j], SIGKILL);
 			pause();
-			if(pid_mas[j] > 0)
-			{
-				kill(pid_mas[j], SIGKILL);
-				printf("[%d] %d - is killed\n", j, pid_mas[j]);
-				pid_mas[j] = -1;
-			}
 		}
 }
 
@@ -541,9 +535,17 @@ int run(tree*T, short pipes)
 		if(fd1 != 1) close(fd1);
 		if(fd0 != 0) close(fd0);
 		int status = 0;
-		wait(&status);
-		if(WIFEXITED(status)) return WEXITSTATUS(status);
-		else return -1;
+		if(!Appflag)
+		{
+			wait(&status);
+			if(WIFEXITED(status)) return WEXITSTATUS(status);
+			else return -1;
+		} else
+		{
+			int num = add_pid(p);
+			printf("[%d] %d\n", num, p);
+			return 0;
+		}
 	}
 	else							// <<< P I P E >>>
 	{
@@ -601,9 +603,17 @@ int run(tree*T, short pipes)
 		}
 		close(fread);
 		int status = 0;
-		while(wait(&status) != -1);
-		if(WIFEXITED(status)) return WEXITSTATUS(status);
-		else return -1;
+		if(!Appflag)
+		{
+			while(wait(&status) != -1);
+			if(WIFEXITED(status)) return WEXITSTATUS(status);
+			else return -1;
+		} else
+		{
+			int num = add_pid(p);
+			printf("[%d] %d\n", num, p);
+			return 0;
+		}
 	}
 }
 
@@ -630,17 +640,8 @@ void do_tree(tree*T)
 		}
 		else if(!strcmp(T->argv->word, "&"))
 		{
-			int p, num;
-			if(!(p = fork()))
-			{
-				do_tree(T->left);
-				exit(0);
-			}
-			else
-			{
-				num = add_pid(p);
-				printf("[%d] %d\n", num, p);
-			}
+			Appflag = 1;
+			do_tree(T->left);;
 		}
 		else
 		{
@@ -658,18 +659,23 @@ void do_tree(tree*T)
 
 void MY_SIGCHLD(int SIG)
 {
-	int status, pid, i;
+	int status=0, pid, i;
 	pid = waitpid(-1, &status, WNOHANG);
 	if(pid > 0)
 	{
 		i = pid_in_mas(pid);
-		if(i>0) printf("[%d]+ Done\n", i);
+		if(i>0)
+		{
+			if(WIFEXITED(status)) printf("[%d]+ Done\n", i);
+			else if(WIFSIGNALED(status)) printf("[%d]+ Terminated\n", i);
+		}
+		pid_mas[i] = -1;
 	}
 }
 
-void MY_SIGKILL(int SIG)
+void MY_SIGINT(int SIG)
 {
-	kill_children();
+	kill(-1, SIGINT);
 }
 
 int main(int argc, char **argv)
@@ -681,7 +687,8 @@ int main(int argc, char **argv)
 	pid_mas[1] = -1;
 	char*col = get_random_colour();
 	signal(SIGCHLD, MY_SIGCHLD);
-	signal(SIGUSR1, MY_SIGKILL);
+//	signal(SIGINT, MY_SIGINT);
+	signal(SIGINT, SIG_IGN);
 	while(!eoflag)
 	{
 		printf("%s> %s", col, RESET);
@@ -724,6 +731,7 @@ int main(int argc, char **argv)
 			}
 			else
 			{
+				Appflag = 0;
 				do_tree(Root);
 			}
 		}
