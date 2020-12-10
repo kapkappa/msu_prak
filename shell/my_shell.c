@@ -32,8 +32,7 @@ typedef struct tree
 	node *argv;
 	struct tree *left;
 	struct tree *right;
-	int Wr;
-	int Rd;
+	int Pipe;
 }tree;
 
 short eoflag = 0;
@@ -376,8 +375,7 @@ tree*create_node(char*word)
 	res->left = NULL;
 	res->argv = NULL;
 	res->argv = insert(res->argv, word);
-	res->Wr = 0;
-	res->Rd = Pipeflag;
+	res->Pipe = 0;
 	return res;
 }
 
@@ -445,7 +443,7 @@ tree*add_node(tree*res, char*word)
 		while(tmp->right) tmp=tmp->right;
 		if(Specflag)
 		{
-			tmp->Wr = Pipeflag;
+			tmp->Pipe = Pipeflag;
 			tmp->right = create_node(word);
 			Specflag = 0;
 			Pipeflag = 0;
@@ -479,9 +477,8 @@ void print_tree(tree*T)
 	if(T)
 	{
 		print_tree(T->left);
-		printf("Rd: %d ", T->Rd);
 		print_list(T->argv);
-		printf(" Wr: %d", T->Wr);
+		printf(" Pipe: %d", T->Pipe);
 		printf("\n");
 		print_tree(T->right);
 	}
@@ -604,7 +601,8 @@ int run(tree*T, short pipes)
 		}
 		pid_t p;
 		if((p=fork())==0)
-		{						//SON
+		{
+			if(!Appflag) signal(SIGINT,SIG_DFL);
 			if(fd0 != 0){dup2(fd0, 0); close(fd0);}
 			if(fd1 != 1){dup2(fd1, 1); close(fd1);}
 			execvp(args[0], args);
@@ -642,7 +640,8 @@ int run(tree*T, short pipes)
 		{
 			pipe(fd);
 			if((p=fork())==0)
-			{					//SON
+			{
+				if(!Appflag) signal(SIGINT,SIG_DFL);
 				dup2(fread, 0);
 				dup2(fd[1], 1);
 				close(fread);
@@ -672,6 +671,7 @@ int run(tree*T, short pipes)
 		if((p=fork())==0)
 		{
 			//LAST SON
+			if(!Appflag) signal(SIGINT,SIG_DFL);
 			dup2(fread, 0);
 			close(fread);
 			int fd1 = catch_them_all(getfileout, T);
@@ -741,7 +741,7 @@ void do_tree(tree*T)
 			short pipes = 0;
 			while(tmp)
 			{
-				pipes+=tmp->Wr;
+				pipes+=tmp->Pipe;
 				tmp = tmp->right;
 			}
 			Success = !(run(T, pipes));
@@ -761,26 +761,12 @@ void MY_SIGCHLD(int SIG)
 	{
 		i = pid_in_mas(pid);
 //		printf("Ind %d Pid %d\n", i, pid);
-		if(i>0)
+		if(i>=0)
 		{
 			if(WIFEXITED(status)) printf("[%d]+ Done\n", i);
 			else if(WIFSIGNALED(status)) printf("[%d]+ Terminated\n", i);
 			pid_mas[i] = -1;
 		}
-	}
-}
-
-void MY_SIGINT(int SIG)
-{
-#ifdef DEBUG
-	fprintf(stderr, "DEBUG func: %s\n", __func__);
-#endif
-	signal(SIGINT, MY_SIGINT);
-	printf("cur pid is %d \n", cur_pid);
-	if(cur_pid)
-	{
-		kill(cur_pid, SIGINT);
-		cur_pid = 0;
 	}
 }
 
@@ -793,7 +779,6 @@ int main(int argc, char **argv)
 	pid_mas[1] = -1;
 	char*col = get_random_colour();
 	signal(SIGCHLD, MY_SIGCHLD);
-//	signal(SIGINT, MY_SIGINT);
 	signal(SIGINT, SIG_IGN);
 	while(!eoflag)
 	{
