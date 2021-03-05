@@ -4,10 +4,13 @@ using namespace std;
 
 class String {
 
+private:
     int length;
     char*str;
 
 public:
+
+    friend String operator+ (const String &, const String &);
 
     String(): length(0), str(nullptr) {};
 
@@ -16,6 +19,13 @@ public:
         str = (char*)malloc(sizeof(char) * length);
         for (int i = 0; i < length; i++)
             str[i] = cp_str[i];
+    }
+
+    String(const std::string & s_str) {
+        length = s_str.length();
+        str = (char*)malloc(sizeof(char) * length);
+        for (int i = 0; i < length; i++)
+            str[i] = s_str[i];
     }
 
     String(const int & a) {
@@ -56,7 +66,7 @@ public:
         free(str);
     }
 
-    String operator= (const String & cp_str) {
+    const String & operator= (const String & cp_str) {
         length = cp_str.length;
         free(str);
         str = (char*)malloc(sizeof(char) * length);
@@ -65,18 +75,7 @@ public:
         return *this;
     }
 
-    String operator+ (const String & cp_str) {
-        String tmp;
-        tmp.length = length + cp_str.length;
-        tmp.str = (char*)malloc(sizeof(char) * tmp.length);
-        for (int i = 0; i < length; i++)
-            tmp.str[i] = str[i];
-        for (int i = 0; i < cp_str.length; i++)
-            tmp.str[length+i] = cp_str[i];
-        return tmp;
-    }
-
-    String operator+= (const String & cp_str) {
+    const String & operator+= (const String & cp_str) {
         int tmp = length;
         length += cp_str.length;
         str = (char*)realloc(str, sizeof(char)*length);
@@ -93,6 +92,39 @@ public:
         return str[pos];
     }
 
+    //lexico-graphic comparison
+    bool operator== (const String & cp_str) const {
+        if(length != cp_str.length) return false;
+        for (int i = 0; i < length; i++)
+            if(str[i] != cp_str[i]) return false;
+        return true;
+    }
+
+    bool operator!= (const String & cp_str) const {
+        return !(*this==cp_str);
+    }
+
+    bool operator< (const String & cp_str) const {
+        int i = 0;
+        while(i < length && i < cp_str.length) {
+            if(str[i] >= cp_str[i]) return false;
+        }
+        if(length <= cp_str.length) return true;
+        else return false;
+    }
+
+    bool operator<= (const String & cp_str) const {
+        return (*this<cp_str || *this==cp_str);
+    }
+
+    bool operator>= (const String & cp_str) const {
+        return !(*this>cp_str);
+    }
+
+    bool operator> (const String & cp_str) const {
+        return !(*this<cp_str) && !(*this==cp_str);
+    }
+
     void print() const {
         std::cout << "Length is: " << length << "\t";
         for(int i = 0; i < length; i++) {
@@ -100,14 +132,36 @@ public:
         }
         std::cout << "\n";
     }
+
+    int len() const {
+        return length;
+    }
 };
+
+String operator+ (const String & cp_str1, const String & cp_str2) {
+    String tmp;
+    tmp.length = cp_str1.length + cp_str2.length;
+    tmp.str = (char*)malloc(sizeof(char) * tmp.length);
+    for (int i = 0; i < cp_str1.length; i++)
+        tmp.str[i] = cp_str1[i];
+    for (int i = 0; i < cp_str2.length; i++)
+        tmp.str[cp_str1.length+i] = cp_str2[i];
+    return tmp;
+}
+
+std::ostream& operator<< (std::ostream& os, const String & cp_str) {
+    for(int i = 0; i < cp_str.len(); i++)
+        std::cout << cp_str[i];
+    return os;
+}
 
 int main() {
     cout << "Testing default and char constructor" << endl;
     String a1, a2('a');
     a1.print();
     a2.print();
-    a1 = a2;
+    std::string s("string");
+    a1 = s;
     a1.print();
     cout << "Testing int constructor" << endl;
     String b1(123), b2(0), b3(-123), b4(-0);
@@ -115,15 +169,20 @@ int main() {
     b2.print();
     b3.print();
     b4.print();
-    cout << "Testing concatenation" << endl;
-    String c1 = a1+b1, c2 = a2+b2, c3 = c1+a2+b3, c4 = c1+c2+c3;
+    cout << "Testing concatenation, with = and +=" << endl;
+    String c1 = a1+b1, c2 = a2+b2, c3 = c1+a2+3, c4 = 1+c2;
     c1.print();
     c2.print();
     c3.print();
     c4.print();
     String c5;
+    c5=c4=c3=c2=c1;
     c5 += b1 + b2 + b3 += b4;
     c5.print();
+    cout << "Testing comparison" << endl;
+    cout << (a1 == a2) << endl;
+    cout << (c1 == c2) << endl;
+    cout << (b1 < b2) << endl;
+    cout << "Operator <<:\t" << c4 << endl;
     return 0;
 }
-

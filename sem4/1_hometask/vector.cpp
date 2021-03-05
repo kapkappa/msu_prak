@@ -89,8 +89,9 @@ public:
     void pop_back() {
         if(!size) return;
         size--;
-        end--;
         start = (int*)realloc(start, size * sizeof(int));
+        end = start + size - 1;
+        if(!size) end++;
     }
 
     int get_size() const { return size; }
