@@ -3,6 +3,7 @@ Parameters:
  - size
  - pointers: begin, end
  - if_allocated
+
 Member functions:
  - constructor(default, copy, initializer list)
  - destructor
@@ -15,6 +16,7 @@ Class String
 Parameters:
  - length
  - pointer str
+
 Member functions:
  - constructor(default, copy, assignment(std::string, int, char)
  - destructor
