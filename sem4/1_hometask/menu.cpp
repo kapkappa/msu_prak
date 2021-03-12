@@ -193,6 +193,8 @@ int main() {
                 << "1 - print" << endl
                 << "2 - show an element" << endl
                 << "3 - show length" << endl
+                << "4 - convert to integer" << endl
+                << "5 - convert to float" << endl
                 << "0 - back to main menu" << endl;
 
                 int key5;
@@ -208,6 +210,12 @@ int main() {
                     cout << "s[" << i << "]: " << s[i] << endl;
                 } else if (key5 == 3) {
                     cout << "Length: " << s.len() << endl;
+                } else if (key5 == 4) {
+                    int i = s.s2int();
+                    cout << "Integer i: " << i << endl;
+                } else if (key5 == 5) {
+                    float f = s.s2float();
+                    cout << "Float f: " << f << endl;
                 } else {
                     cout << "Incorrect key, try again!" << endl;
                 }
