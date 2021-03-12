@@ -1,142 +1,88 @@
 #include <iostream>
+#include "string.h"
 
-using namespace std;
+String::String(const int & a) {
+    int tmp = a, cp(0), size(0);
+    bool neg = false;
+    if(tmp < 0) neg = true;
+    do {
+        size++;
+        cp = cp * 10 + abs(tmp % 10);
+        tmp /= 10;
+    } while(tmp);
 
-class String {
+    length = size + neg;
+    str = (char*)malloc(sizeof(char) * length);
 
-private:
-    int length;
-    char*str;
-
-public:
-
-    friend String operator+ (const String &, const String &);
-
-    String(): length(0), str(nullptr) {};
-
-    String(const String & cp_str) {
-        length = cp_str.length;
-        str = (char*)malloc(sizeof(char) * length);
-        for (int i = 0; i < length; i++)
-            str[i] = cp_str[i];
+    int i(0);
+    if(neg) {
+        str[0] = '-';
+        i++;
     }
 
-    String(const std::string & s_str) {
-        length = s_str.length();
-        str = (char*)malloc(sizeof(char) * length);
-        for (int i = 0; i < length; i++)
-            str[i] = s_str[i];
-    }
+    do {
+        char c = '0' + cp % 10;
+        str[i] = c;
+        cp /= 10;
+        i++;
+    } while(cp);
+}
 
-    String(const int & a) {
-        int tmp = a, cp(0), size(0);
-        bool neg = false;
-        if(tmp < 0) neg = true;
-        do {
-            size++;
-            cp = cp * 10 + abs(tmp % 10);
-            tmp /= 10;
-        } while(tmp);
-
-        length = size + neg;
-        str = (char*)malloc(sizeof(char) * length);
-
-        int i(0);
-        if(neg) {
-            str[0] = '-';
-            i++;
+int String::s2int() const {
+    int res(0), digit;
+    bool negative = false;
+    if(length) negative = str[0] == '-';
+    for(int i = negative; i < length; i++) {
+        digit = str[i]-'0';
+        if(digit >= 0 && digit < 10) res = res * 10 + digit;
+        else {
+            std::cout << "String contains non-digit symbols" << std::endl;
+            return -1;
         }
-
-        do {
-            char c = '0' + cp % 10;
-            str[i] = c;
-            cp /= 10;
-            i++;
-        } while(cp);
-
     }
+    if(negative) res*=-1;
+    return res;
+}
 
-    String(const char & a) {
-        length = 1;
-        str = (char*)malloc(sizeof(char));
-        str[0] = a;
-    }
-
-    ~String() {
-        free(str);
-    }
-
-    const String & operator= (const String & cp_str) {
-        length = cp_str.length;
-        free(str);
-        str = (char*)malloc(sizeof(char) * length);
-        for (int i = 0; i < length; i++)
-            str[i] = cp_str[i];
-        return *this;
-    }
-
-    const String & operator+= (const String & cp_str) {
-        int tmp = length;
-        length += cp_str.length;
-        str = (char*)realloc(str, sizeof(char)*length);
-        for(int i = 0; i < cp_str.length; i++)
-            str[tmp+i] = cp_str[i];
-        return *this;
-    }
-
-    char operator[] (const int pos) const {
-        if(pos>=length || pos < 0) {
-            std::cout << "Index is out of borders" << std::endl;
-            return 0;
+/*
+    float s2float() const {
+        float res(0), digit, ppos(0);
+        bool negative = false;
+        if(length) negative = str[0] == '-';
+        for (int i = negative; i < length; i++) {
+            if(str[i] == '.' || str[i] == ',') {
+                ppos = ++i;
+                break;
+            }
+            digit = str[i]-'0';
+            if(digit >= 0 && digit < 10) res = res * 10 + digit;
+            else {
+                std::cout << "String containts non-digit symbols" << std::endl;
+                return -1;
+            }
         }
-        return str[pos];
-    }
-
-    //lexico-graphic comparison
-    bool operator== (const String & cp_str) const {
-        if(length != cp_str.length) return false;
-        for (int i = 0; i < length; i++)
-            if(str[i] != cp_str[i]) return false;
-        return true;
-    }
-
-    bool operator!= (const String & cp_str) const {
-        return !(*this==cp_str);
-    }
-
-    bool operator< (const String & cp_str) const {
-        int i = 0;
-        while(i < length && i < cp_str.length) {
-            if(str[i] >= cp_str[i]) return false;
+        if(ppos == length) {
+            std::cout << "Incorrect float format" << std::endl;
+            return -1;
         }
-        if(length <= cp_str.length) return true;
-        else return false;
-    }
-
-    bool operator<= (const String & cp_str) const {
-        return (*this<cp_str || *this==cp_str);
-    }
-
-    bool operator>= (const String & cp_str) const {
-        return !(*this>cp_str);
-    }
-
-    bool operator> (const String & cp_str) const {
-        return !(*this<cp_str) && !(*this==cp_str);
-    }
-
-    void print() const {
-        std::cout << "Length is: " << length << "\t";
-        for(int i = 0; i < length; i++) {
-            std::cout << str[i];
+        if(ppos) {
+            int tmp = 0;
+            for (int i = ppos; i < length; i++) {
+                digit = str[i] - '0';
+                if(digit >= 0 && digit < 10) tmp = tmp * 10 + digit;
+                else {
+                    std::cout << "String contains non-digit symbols" << std::endl;
+                    return -1;
+                }
+            }
+            std::cout << res << '.' << tmp << '\t' << length-ppos << endl;
+            std::cout << tmp / (10 * (length - ppos)) << endl;
         }
-        std::cout << "\n";
+        if(negative) res *= -1;
+        return res;
     }
+*/
 
-    int len() const {
-        return length;
-    }
-};
 
 String operator+ (const String & cp_str1, const String & cp_str2) {
     String tmp;
@@ -155,34 +101,14 @@ std::ostream& operator<< (std::ostream& os, const String & cp_str) {
     return os;
 }
 
-int main() {
-    cout << "Testing default and char constructor" << endl;
-    String a1, a2('a');
-    a1.print();
-    a2.print();
-    std::string s("string");
-    a1 = s;
-    a1.print();
-    cout << "Testing int constructor" << endl;
-    String b1(123), b2(0), b3(-123), b4(-0);
-    b1.print();
-    b2.print();
-    b3.print();
-    b4.print();
-    cout << "Testing concatenation, with = and +=" << endl;
-    String c1 = a1+b1, c2 = a2+b2, c3 = c1+a2+3, c4 = 1+c2;
-    c1.print();
-    c2.print();
-    c3.print();
-    c4.print();
-    String c5;
-    c5=c4=c3=c2=c1;
-    c5 += b1 + b2 + b3 += b4;
-    c5.print();
-    cout << "Testing comparison" << endl;
-    cout << (a1 == a2) << endl;
-    cout << (c1 == c2) << endl;
-    cout << (b1 < b2) << endl;
-    cout << "Operator <<:\t" << c4 << endl;
-    return 0;
+std::istream& operator>> (std::istream& is, String & cp_str) {
+    char c = 0;
+    String tmp;
+    c = getchar();
+    while (c != '\n') {
+        tmp.push_back(c);
+        c = getchar();
+    }
+    if(tmp.len()) cp_str += tmp;
+    return is;
 }
