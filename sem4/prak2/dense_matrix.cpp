@@ -54,6 +54,7 @@ dense_matrix operator* (const dense_matrix & A, const dense_matrix & B) {
     assert(A.ncols == B.nrows);
     double nrows = (double)A.nrows, ncols = (double)B.ncols;
     dense_matrix T = {nrows, ncols};
+    T.nonzeros = 0;
     uint64_t size = nrows * ncols;
     for (auto i = 0; i < nrows; i++) {
         for (auto j = 0; j < ncols; j++) {
@@ -67,12 +68,16 @@ dense_matrix operator* (const dense_matrix & A, const dense_matrix & B) {
     return T;
 }
 
-void dense_matrix::Ax_y(std::vector<double> &x, std::vector<double> &y) {
-    assert(0);
-}
-
-void dense_matrix::Axpy(std::vector<double> &x, std::vector<double> &y) {
-    assert(0);
+dense_matrix operator* (const dense_matrix & A, const double coef) {
+    double nrows = (double)A.nrows, ncols = (double)A.ncols;
+    dense_matrix T(A);
+    uint64_t size = nrows * ncols;
+    for (auto i = 0; i < size; i++) {
+        T.val[i] *= coef;
+    }
+    if (coef == 0.0)
+        T.nonzeros = 0;
+    return T;
 }
 
 void dense_matrix::print() const {

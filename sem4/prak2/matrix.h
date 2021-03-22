@@ -9,9 +9,6 @@ struct matrix {
 
     virtual ~matrix(){};
 
-    virtual void Ax_y(std::vector<double> &x, std::vector<double> &y) = 0;
-    virtual void Axpy(std::vector<double> &x, std::vector<double> &y) = 0;
-
     virtual void print() const = 0;
 
     virtual bool alloc() = 0;

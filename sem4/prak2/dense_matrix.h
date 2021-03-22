@@ -56,9 +56,7 @@ struct dense_matrix : matrix {
 
     friend dense_matrix operator+ (const dense_matrix &, const dense_matrix &);
     friend dense_matrix operator* (const dense_matrix &, const dense_matrix &);
-
-    void Ax_y (std::vector<double> &, std::vector<double> &);
-    void Axpy (std::vector<double> &, std::vector<double> &);
+    friend dense_matrix operator* (const dense_matrix &, const double);
 
     double get (const int, const int) const;
     bool alloc();
