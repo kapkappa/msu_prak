@@ -19,14 +19,33 @@ struct dense_matrix : matrix {
         }
         nrows = *list.begin();
         ncols = *(list.begin()+1);
-        nonzeros = size-2;
+        nonzeros = 0;
 
         alloc();
 
-        for (uint64_t i = 0; i < nonzeros; i++) {
+        for (uint64_t i = 0; i < size-2; i++) {
             val[i] = *(list.begin()+i+2);
+            if (val[i] != 0.0)
+                nonzeros++;
         }
+
+        for (uint64_t j = size-2; j < nrows * ncols; j++)
+            val[j] = 0.0;
     }
+
+    dense_matrix(const dense_matrix & A) {
+        nrows = A.nrows;
+        ncols = A.ncols;
+        nonzeros = A.nonzeros;
+        alloc();
+        val = A.val;
+    }
+
+    friend dense_matrix operator+ (const dense_matrix &, const dense_matrix &);
+    friend dense_matrix operator* (const dense_matrix &, const dense_matrix &);
+
+    void Ax_y (std::vector<double> &, std::vector<double> &);
+    void Axpy (std::vector<double> &, std::vector<double> &);
 
     bool alloc();
     bool generate();

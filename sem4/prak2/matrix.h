@@ -3,7 +3,8 @@
 #include <cstdint>
 
 struct matrix {
-    uint64_t nrows, ncols, nonzeros;
+    uint32_t nrows, ncols;
+    uint64_t nonzeros;
     bool if_empty;
 
     virtual ~matrix(){};
@@ -16,8 +17,8 @@ struct matrix {
     virtual bool alloc() = 0;
     virtual bool generate() = 0;
 
-    uint64_t get_nrows() const { return nrows; }
-    uint64_t get_ncols() const { return ncols; }
+    uint32_t get_nrows() const { return nrows; }
+    uint32_t get_ncols() const { return ncols; }
     uint64_t get_nonzeros() const { return nonzeros; }
 
 };
