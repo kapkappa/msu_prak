@@ -3,6 +3,7 @@
 #include "cassert"
 
 struct dense_matrix : matrix {
+
     std::vector<double> val;
 
     dense_matrix() {
@@ -11,7 +12,7 @@ struct dense_matrix : matrix {
     }
 
     dense_matrix(const std::initializer_list<double> &list) {
-        int size = list.size();
+        auto size = list.size();
         if (size == 0) {
             std::cout << "Empty list\n";
         } else if (size < 2) {
@@ -41,14 +42,27 @@ struct dense_matrix : matrix {
         val = A.val;
     }
 
+    dense_matrix & operator= (const dense_matrix & A) {
+        nrows = A.nrows;
+        ncols = A.ncols;
+        nonzeros = A.nonzeros;
+        val.resize(A.val.size());
+        val = A.val;
+        if_empty = A.if_empty;
+        return *this;
+    }
+
+    double operator[] (const int pos) const;
+
     friend dense_matrix operator+ (const dense_matrix &, const dense_matrix &);
     friend dense_matrix operator* (const dense_matrix &, const dense_matrix &);
 
     void Ax_y (std::vector<double> &, std::vector<double> &);
     void Axpy (std::vector<double> &, std::vector<double> &);
 
+    double get (const int, const int) const;
     bool alloc();
-    bool generate();
+    bool generate (const uint32_t &, const uint32_t &);
     void print() const;
 
 };
