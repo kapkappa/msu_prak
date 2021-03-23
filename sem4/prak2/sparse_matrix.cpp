@@ -1,45 +1,53 @@
 #include "matrix.h"
-#include "dense_matrix.h"
+#include "sparse_matrix.h"
 #include "cassert"
 
-bool dense_matrix::alloc() {
-    uint64_t size = nrows * ncols;
-    if (size) {
+bool sparse_matrix::alloc() {
+    if (nonzeros) {
         if_empty = false;
-        val.alloc(size);
+        val.alloc(nonzeros);
+        row.resize(nrows+1);
+        col.resize(nonzeros);
     }
     return true;
 }
 
-bool dense_matrix::generate(const uint32_t &m, const uint32_t &n) {
+bool sparse_matrix::generate(const uint32_t &m, const uint32_t &n) {
     if (!if_empty)
         return false;
     nrows = m;
     ncols = n;
+    nonzeros = std::max(m,n);
     alloc();
-    uint64_t size = m * n;
-    for (uint64_t i = 0; i < size; i++) {
+    row[0] = 0;
+    for (uint64_t i = 0; i < nonzeros; i++) {
         val[i] = (double) i;
+        col[i] = i % n;
+        row[i+1] = i+1;
     }
-    nonzeros = size-1;
     return true;
 }
 
-double dense_matrix::operator[] (const uint32_t pos) const {
+double sparse_matrix::operator[] (const uint32_t pos) const {
     assert(pos <= nrows * ncols);
     return val[pos];
 }
 
-double dense_matrix::get (const uint32_t row, const uint32_t col) const {
-    assert(row <= nrows);
-    assert(col <= ncols);
-    return val[row * nrows + col];
+double sparse_matrix::get (const uint32_t nrow, const uint32_t ncol) const {
+    assert(nrow <= nrows);
+    assert(ncol <= ncols);
+    for (auto j = row[nrow]; j < row[nrow+1]; j++)
+        if (col[j] == ncol)
+            return val[j];
+    return 0.0;
 }
 
-dense_matrix operator+ (const dense_matrix & A, const dense_matrix & B) {
+//FIXME!
+sparse_matrix operator+ (const sparse_matrix & A, const sparse_matrix & B) {
+    assert(0);
     assert(A.nrows == B.nrows);
     assert(A.ncols == B.nrows);
-    dense_matrix T(A);
+    sparse_matrix T(A);
     T.nonzeros = 0;
     uint64_t size = T.nrows * T.ncols;
     for (uint64_t i  = 0; i < size; i++) {
@@ -50,10 +58,12 @@ dense_matrix operator+ (const dense_matrix & A, const dense_matrix & B) {
     return T;
 }
 
-dense_matrix operator* (const dense_matrix & A, const dense_matrix & B) {
+//FIXME!
+sparse_matrix operator* (const sparse_matrix & A, const sparse_matrix & B) {
+    assert(0);
     assert(A.ncols == B.nrows);
     double nrows = (double)A.nrows, ncols = (double)B.ncols;
-    dense_matrix T = {nrows, ncols};
+    sparse_matrix T = {nrows, ncols};
     T.nonzeros = 0;
     for (auto i = 0; i < nrows; i++) {
         for (auto j = 0; j < ncols; j++) {
@@ -67,11 +77,9 @@ dense_matrix operator* (const dense_matrix & A, const dense_matrix & B) {
     return T;
 }
 
-dense_matrix operator* (const dense_matrix & A, const double coef) {
-    double nrows = (double)A.nrows, ncols = (double)A.ncols;
-    dense_matrix T(A);
-    uint64_t size = nrows * ncols;
-    for (uint64_t i = 0; i < size; i++) {
+sparse_matrix operator* (const sparse_matrix & A, const double coef) {
+    sparse_matrix T(A);
+    for (uint64_t i = 0; i < T.nonzeros; i++) {
         T.val[i] *= coef;
     }
     if (coef == 0.0)
@@ -79,17 +87,17 @@ dense_matrix operator* (const dense_matrix & A, const double coef) {
     return T;
 }
 
-void dense_matrix::print() const {
+void sparse_matrix::print() const {
     if(if_empty)
         return;
     for (uint32_t i = 0; i < nrows; i++) {
         for (uint32_t j = 0; i < ncols; j++)
-            std::cout << val[i * ncols + j] << "  ";
+            std::cout << val[i*nrows + j] << "  ";
         std::cout << std::endl;
     }
 }
 
-std::ostream& operator<< (std::ostream& os, const dense_matrix &m) {
+std::ostream& operator<< (std::ostream& os, const sparse_matrix &m) {
     m.print();
     return os;
 }
