@@ -17,7 +17,7 @@ bool sparse_matrix::generate(const uint32_t &m, const uint32_t &n) {
         return false;
     nrows = m;
     ncols = n;
-    nonzeros = std::max(m,n);
+    nonzeros = m;
     alloc();
     row[0] = 0;
     for (uint64_t i = 0; i < nonzeros; i++) {
@@ -42,19 +42,40 @@ double sparse_matrix::get (const uint32_t nrow, const uint32_t ncol) const {
     return 0.0;
 }
 
-//FIXME!
 sparse_matrix operator+ (const sparse_matrix & A, const sparse_matrix & B) {
-    assert(0);
     assert(A.nrows == B.nrows);
-    assert(A.ncols == B.nrows);
-    sparse_matrix T(A);
-    T.nonzeros = 0;
-    uint64_t size = T.nrows * T.ncols;
-    for (uint64_t i  = 0; i < size; i++) {
-        T.val[i] += B.val[i];
-        if (T.val[i] != 0.0)
-            T.nonzeros++;
+    assert(A.ncols == B.ncols);
+
+    sparse_matrix T;
+    T.nrows = A.nrows;
+    T.ncols = A.ncols;
+    T.nonzeros = A.nonzeros + B.nonzeros;
+
+    T.row.resize(T.nrows+1);
+    T.row[0] = 0;
+    for (uint32_t i = 0; i < A.nrows; i++) {
+        T.row[i+1] = A.row[i+1] + B.row[i+1] - B.row[i];
+        for (uint32_t j = A.row[i]; j < A.row[i+1]; j++)
+            for (uint32_t jj = B.row[i]; jj < B.row[i+1]; jj++)
+                if (B.col[jj] == A.col[j]) {
+                    T.nonzeros--;
+                    T.row[i+1]--;
+                }
     }
+
+    T.val.alloc(T.nonzeros);
+    T.col.resize(T.nonzeros);
+
+    for (uint32_t i = 0; i < T.nrows; i++) {
+        for (uint32_t j = A.row[i]; j < A.row[i+1]; j++) {
+            T.col[j] = A.col[j];
+            T.val[j] = A.val[j];
+            for (uint32_t jj = B.row[i]; jj < B.row[i+1]; jj++)
+                if (B.col[jj] == A.col[j])
+                    T.val[j] += B.val[jj];
+        }
+    }
+    T.if_empty = false;
     return T;
 }
 
@@ -62,11 +83,12 @@ sparse_matrix operator+ (const sparse_matrix & A, const sparse_matrix & B) {
 sparse_matrix operator* (const sparse_matrix & A, const sparse_matrix & B) {
     assert(0);
     assert(A.ncols == B.nrows);
-    double nrows = (double)A.nrows, ncols = (double)B.ncols;
-    sparse_matrix T = {nrows, ncols};
+
+    sparse_matrix T;
     T.nonzeros = 0;
-    for (auto i = 0; i < nrows; i++) {
-        for (auto j = 0; j < ncols; j++) {
+/*
+    for (auto i = 0; i < T.nrows; i++) {
+        for (auto j = 0; j < T.ncols; j++) {
             for (uint32_t k = 0; k < A.ncols; k++) {
                 T.val[i * nrows + j] += A.get(i,k) * B.get(k,j);
             }
@@ -74,6 +96,7 @@ sparse_matrix operator* (const sparse_matrix & A, const sparse_matrix & B) {
                 T.nonzeros++;
         }
     }
+*/
     return T;
 }
 
@@ -91,8 +114,9 @@ void sparse_matrix::print() const {
     if(if_empty)
         return;
     for (uint32_t i = 0; i < nrows; i++) {
-        for (uint32_t j = 0; i < ncols; j++)
-            std::cout << val[i*nrows + j] << "  ";
+        std::cout << "row: " << i;
+        for (uint32_t j = row[i]; j < row[i+1] ; j++)
+            std::cout << "\tval: " << val[j] << "  col:  " << col[j];
         std::cout << std::endl;
     }
 }

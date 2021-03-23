@@ -1,11 +1,15 @@
+#pragma once
+
 #include "matrix.h"
 #include "vector.cpp"
 #include <iostream>
 #include "cassert"
 
-struct dense_matrix : matrix {
+class dense_matrix : public matrix {
 
     Vector val;
+
+public:
 
     dense_matrix() {
         nrows = ncols = nonzeros = 0;
@@ -31,14 +35,32 @@ struct dense_matrix : matrix {
             val[j] = 0.0;
     }
 
-    dense_matrix(const dense_matrix & A) {
+    dense_matrix (const dense_matrix & A) {
         nrows = A.nrows;
         ncols = A.ncols;
         nonzeros = A.nonzeros;
         alloc();
         val = A.val;
     }
+/*
+    dense_matrix (const sparse_matrix & A) {
+        nrows = A.nrows;
+        ncols = A.ncols;
+        nonzeros = A.nonzeros;
+        alloc();
 
+        for (int i = 0; i < val.get_size(); i++)
+            val[i] = 0.0;
+
+        for (uint32_t i = 0; i < nrows; i++) {
+            uint32_t ii = i;
+            for (uint32_t j = A.get_row(i); j < A.get_row(i+1); j++) {
+                uint32_t jj = A.get_col(j);
+                val[ii * ncols + jj] = A.get_val(j);
+            }
+        }
+    }
+*/
     ~dense_matrix() {
         val.clear();
     }
@@ -48,7 +70,6 @@ struct dense_matrix : matrix {
         ncols = A.ncols;
         nonzeros = A.nonzeros;
         val.clear();
-//        val.alloc(A.val.get_size());
         val = A.val;
         if_empty = A.if_empty;
         return *this;

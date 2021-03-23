@@ -126,7 +126,10 @@ public:
     }
 
     void clear() {
-        if(start) free(start);
+        if (start) {
+            free(start);
+            start = nullptr;
+        }
         size = 0;
         if_allocated = false;
     }

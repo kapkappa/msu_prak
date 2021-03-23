@@ -38,7 +38,7 @@ double dense_matrix::get (const uint32_t row, const uint32_t col) const {
 
 dense_matrix operator+ (const dense_matrix & A, const dense_matrix & B) {
     assert(A.nrows == B.nrows);
-    assert(A.ncols == B.nrows);
+    assert(A.ncols == B.ncols);
     dense_matrix T(A);
     T.nonzeros = 0;
     uint64_t size = T.nrows * T.ncols;
@@ -83,7 +83,7 @@ void dense_matrix::print() const {
     if(if_empty)
         return;
     for (uint32_t i = 0; i < nrows; i++) {
-        for (uint32_t j = 0; i < ncols; j++)
+        for (uint32_t j = 0; j < ncols; j++)
             std::cout << val[i * ncols + j] << "  ";
         std::cout << std::endl;
     }

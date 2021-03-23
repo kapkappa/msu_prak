@@ -1,15 +1,18 @@
 #pragma once
+
 #include "matrix.h"
 #include "vector.cpp"
 #include <vector>
 #include <iostream>
 #include "cassert"
 
-struct sparse_matrix : matrix {
+class sparse_matrix : public matrix {
 
     Vector val;
     std::vector<uint32_t> col;
     std::vector<uint32_t> row;
+
+public:
 
     sparse_matrix() {
         nrows = ncols = nonzeros = 0;
@@ -51,7 +54,6 @@ struct sparse_matrix : matrix {
         ncols = A.ncols;
         nonzeros = A.nonzeros;
         val.clear();
-//        val.alloc(A.val.size());
         val = A.val;
         if_empty = A.if_empty;
         return *this;
@@ -68,4 +70,9 @@ struct sparse_matrix : matrix {
     bool alloc();
     bool generate (const uint32_t &, const uint32_t &);
     void print() const;
+/*
+    double get_val (const uint32_t pos) const { return val[pos]; }
+    uint32_t get_row (const uint32_t pos) const { return row[pos]; }
+    uint32_t get_col (const uint32_t pos) const { return col[pos]; }
+*/
 };
