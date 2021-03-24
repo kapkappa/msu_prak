@@ -102,26 +102,30 @@ sparse_matrix operator* (const sparse_matrix & A, const sparse_matrix & B) {
 
 sparse_matrix operator* (const sparse_matrix & A, const double coef) {
     sparse_matrix T(A);
-    for (uint64_t i = 0; i < T.nonzeros; i++) {
-        T.val[i] *= coef;
-    }
-    if (coef == 0.0)
+    if (coef == 0.0) {
+        for (uint32_t i = 0; i < T.nonzeros; i++) {
+            T.val[i] = 0.0;
+            T.col[i] = 0;
+        }
+        for (uint32_t j = 0; j < T.nrows+1; j++)
+            T.row[j] = 0;
         T.nonzeros = 0;
+    } else
+        for (uint64_t i = 0; i < T.nonzeros; i++)
+            T.val[i] *= coef;
     return T;
 }
 
-void sparse_matrix::print() const {
-    if(if_empty)
-        return;
-    for (uint32_t i = 0; i < nrows; i++) {
-        std::cout << "row: " << i;
-        for (uint32_t j = row[i]; j < row[i+1] ; j++)
-            std::cout << "\tval: " << val[j] << "  col:  " << col[j];
-        std::cout << std::endl;
-    }
-}
+void sparse_matrix::print() const { std::cout << *this; }
 
-std::ostream& operator<< (std::ostream& os, const sparse_matrix &m) {
-    m.print();
-    return os;
+std::ostream& operator<< (std::ostream& out, const sparse_matrix &m) {
+    if(m.if_empty)
+        return out;
+    for (uint32_t i = 0; i < m.nrows; i++) {
+        out << "row: " << i;
+        for (uint32_t j = m.row[i]; j < m.row[i+1] ; j++)
+            out << "\tval: " << m.val[j] << "  col:  " << m.col[j];
+        out << std::endl;
+    }
+    return out;
 }

@@ -1,5 +1,5 @@
 #pragma once
-
+#include "dense_matrix.h"
 #include "matrix.h"
 #include "vector.cpp"
 #include <vector>
@@ -19,17 +19,10 @@ public:
         if_empty = true;
     }
 
-    sparse_matrix(const std::initializer_list<double> &list) {
-        auto size = list.size();
-        if (size == 0)
-            std::cout << "Empty list\n";
-        else if (size < 2)
-            std::cout << "Not enougth params\n";
-        else
-            std::cout << "Too much params!\n";
-        nrows = *list.begin();
-        ncols = *(list.begin()+1);
-
+    sparse_matrix(const uint32_t m, const uint32_t n) {
+        if_empty = true;
+        nrows = m;
+        ncols = n;
         generate(nrows, ncols);
     }
 

@@ -1,5 +1,5 @@
 #pragma once
-
+#include "sparse_matrix.h"
 #include "matrix.h"
 #include "vector.cpp"
 #include <iostream>
@@ -14,6 +14,16 @@ public:
     dense_matrix() {
         nrows = ncols = nonzeros = 0;
         if_empty = true;
+    }
+
+    dense_matrix(const uint32_t m, const uint32_t n) {
+        nrows = m;
+        ncols = n;
+        nonzeros = 0;
+        alloc();
+        for (uint32_t i = 0; i < m; i++)
+            for (uint32_t j = 0; j < n; j++)
+                val[i*m+j] = 0.0;
     }
 
     dense_matrix(const std::initializer_list<double> &list) {
@@ -61,9 +71,7 @@ public:
         }
     }
 */
-    ~dense_matrix() {
-        val.clear();
-    }
+    ~dense_matrix() { val.clear(); }
 
     dense_matrix & operator= (const dense_matrix & A) {
         nrows = A.nrows;

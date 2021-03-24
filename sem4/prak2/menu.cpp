@@ -30,8 +30,7 @@ int main() {
     sparse_matrix B1;
     B1.generate(4, 6);
     B1.print();
-    sparse_matrix B2;
-    B2.generate(4, 6);
+    sparse_matrix B2(4, 6);
     cout << B2 << endl;
 
     sparse_matrix B3 = B1 + B2;

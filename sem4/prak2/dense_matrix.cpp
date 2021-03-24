@@ -52,11 +52,11 @@ dense_matrix operator+ (const dense_matrix & A, const dense_matrix & B) {
 
 dense_matrix operator* (const dense_matrix & A, const dense_matrix & B) {
     assert(A.ncols == B.nrows);
-    double nrows = (double)A.nrows, ncols = (double)B.ncols;
-    dense_matrix T = {nrows, ncols};
+    uint32_t nrows = A.nrows, ncols = B.ncols;
+    dense_matrix T(A.nrows, A.ncols);
     T.nonzeros = 0;
-    for (auto i = 0; i < nrows; i++) {
-        for (auto j = 0; j < ncols; j++) {
+    for (uint32_t i = 0; i < nrows; i++) {
+        for (uint32_t j = 0; j < ncols; j++) {
             for (uint32_t k = 0; k < A.ncols; k++) {
                 T.val[i * nrows + j] += A.get(i,k) * B.get(k,j);
             }
@@ -68,9 +68,8 @@ dense_matrix operator* (const dense_matrix & A, const dense_matrix & B) {
 }
 
 dense_matrix operator* (const dense_matrix & A, const double coef) {
-    double nrows = (double)A.nrows, ncols = (double)A.ncols;
     dense_matrix T(A);
-    uint64_t size = nrows * ncols;
+    uint64_t size = A.nrows * A.ncols;
     for (uint64_t i = 0; i < size; i++) {
         T.val[i] *= coef;
     }
@@ -79,17 +78,15 @@ dense_matrix operator* (const dense_matrix & A, const double coef) {
     return T;
 }
 
-void dense_matrix::print() const {
-    if(if_empty)
-        return;
-    for (uint32_t i = 0; i < nrows; i++) {
-        for (uint32_t j = 0; j < ncols; j++)
-            std::cout << val[i * ncols + j] << "  ";
-        std::cout << std::endl;
-    }
-}
+void dense_matrix::print() const { std::cout << *this; }
 
-std::ostream& operator<< (std::ostream& os, const dense_matrix &m) {
-    m.print();
-    return os;
+std::ostream& operator<< (std::ostream& out, const dense_matrix &m) {
+    if(m.if_empty)
+        return out;
+    for (uint32_t i = 0; i < m.nrows; i++) {
+        for (uint32_t j = 0; j < m.ncols; j++)
+            out << m.val[i * m.ncols + j] << "  ";
+        out << std::endl;
+    }
+    return out;
 }
