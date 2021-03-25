@@ -79,6 +79,55 @@ sparse_matrix operator+ (const sparse_matrix & A, const sparse_matrix & B) {
     return T;
 }
 
+void transpose (const sparse_matrix & A, sparse_matrix & At) {
+    At.nrows = A.ncols;
+    At.ncols = A.nrows;
+    At.nonzeros = A.nonzeros;
+    At.alloc();
+
+    std::vector<uint32_t> col_;
+    std::vector<double> val_;
+    std::vector<uint32_t> nelems_per_col(A.ncols, 0);
+
+//1. Fill "elems per col" vector
+    for (uint32_t i = 0; i < A.nrows; i++) {
+        uint32_t row_size = A.row[i+1] - A.row[i];
+        col_.resize(row_size, 0);
+
+        for (uint32_t j = A.row[i]; j < A.row[i+1]; j++)
+            col_[j - A.row[i]] = A.col[j];
+
+        for (uint32_t ii = 0; ii < col_.size(); ii++)
+            nelems_per_col[col_[ii]]++;
+    }
+//2. Fill transp row vector
+    At.row[0] = 0;
+    for (uint32_t i = 0; i < At.nrows; i++) {
+        At.row[i+1] = At.row[i] + nelems_per_col[i];
+        nelems_per_col[i] = 0;
+    }
+//3. Fill col: col-number == row_number, and elems col_index == col-number + nonzeros elems before
+    for (uint32_t i = 0; i < A.nrows; i++) {
+        uint32_t row_size = A.row[i+1] - A.row[i];
+        col_.resize(row_size, 0);
+        val_.resize(row_size, 0.0);
+
+        for (uint32_t j = A.row[i]; j < A.row[i+1]; j++) {
+            col_[j - A.row[i]] = A.col[j];
+            val_[j - A.row[i]] = A.val[j];
+        }
+        for (uint32_t ii = 0; ii < col_.size(); ii++) {
+            uint32_t Row_num = col_[ii];
+            uint32_t Row_offset = At.row[Row_num];
+
+            At.col[Row_offset + nelems_per_col[Row_num]] = i;
+            At.val[Row_offset + nelems_per_col[Row_num]] = val_[ii];
+
+            nelems_per_col[Row_num]++;
+        }
+    }
+}
+
 //FIXME!
 sparse_matrix operator* (const sparse_matrix & A, const sparse_matrix & B) {
     assert(0);

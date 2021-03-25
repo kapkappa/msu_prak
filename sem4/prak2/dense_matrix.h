@@ -52,25 +52,7 @@ public:
         alloc();
         val = A.val;
     }
-/*
-    dense_matrix (const sparse_matrix & A) {
-        nrows = A.nrows;
-        ncols = A.ncols;
-        nonzeros = A.nonzeros;
-        alloc();
 
-        for (int i = 0; i < val.get_size(); i++)
-            val[i] = 0.0;
-
-        for (uint32_t i = 0; i < nrows; i++) {
-            uint32_t ii = i;
-            for (uint32_t j = A.get_row(i); j < A.get_row(i+1); j++) {
-                uint32_t jj = A.get_col(j);
-                val[ii * ncols + jj] = A.get_val(j);
-            }
-        }
-    }
-*/
     ~dense_matrix() { val.clear(); }
 
     dense_matrix & operator= (const dense_matrix & A) {

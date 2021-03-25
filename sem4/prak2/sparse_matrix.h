@@ -59,13 +59,10 @@ public:
     friend sparse_matrix operator* (const sparse_matrix &, const double);
     friend std::ostream & operator<< (std::ostream &os, const sparse_matrix &);
 
+    friend void transpose (const sparse_matrix &, sparse_matrix &);
+
     double get (const uint32_t, const uint32_t) const;
     bool alloc();
     bool generate (const uint32_t &, const uint32_t &);
     void print() const;
-/*
-    double get_val (const uint32_t pos) const { return val[pos]; }
-    uint32_t get_row (const uint32_t pos) const { return row[pos]; }
-    uint32_t get_col (const uint32_t pos) const { return col[pos]; }
-*/
 };

@@ -35,5 +35,9 @@ int main() {
 
     sparse_matrix B3 = B1 + B2;
     B3.print();
+    sparse_matrix B4;
+    transpose(B3, B4);
+    cout << endl;
+    B4.print();
     return 0;
 }

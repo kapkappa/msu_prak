@@ -22,9 +22,6 @@ Pure virtual functions:
  - alloc()
  - generate()
 
-Member functions:
- - get_nrows, get_nonzeros, get_ncols
-
 Successors:
  - dense_matrix, sparse_matrix
 
@@ -37,4 +34,4 @@ Member functions:
  - destructor
  - operators: '=' '[]'; As non-member, friend function: '+' '<<' '*'.
  - get(i,j)
- - virtual functions from base-class
+ - transpose for sparse matrices
