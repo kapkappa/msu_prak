@@ -128,24 +128,43 @@ void transpose (const sparse_matrix & A, sparse_matrix & At) {
     }
 }
 
-//FIXME!
 sparse_matrix operator* (const sparse_matrix & A, const sparse_matrix & B) {
-    assert(0);
     assert(A.ncols == B.nrows);
 
     sparse_matrix T;
-    T.nonzeros = 0;
-/*
-    for (auto i = 0; i < T.nrows; i++) {
-        for (auto j = 0; j < T.ncols; j++) {
-            for (uint32_t k = 0; k < A.ncols; k++) {
-                T.val[i * nrows + j] += A.get(i,k) * B.get(k,j);
+    T.nrows = A.nrows;
+    T.ncols = B.ncols;
+    T.row.resize(T.nrows+1);
+    T.row[0] = 0;
+
+    sparse_matrix Bt;
+    transpose(B,Bt);
+
+    for (uint32_t i = 0; i < A.nrows; i++) {
+        uint32_t row_nnz = 0;
+        for (uint32_t j = 0; j < Bt.nrows; j++) {
+            double mul = 0;
+
+//scalar multiplication of i&j rows
+            for (uint32_t k = A.row[i]; k < A.row[i+1]; k++) {
+                for (uint32_t l = Bt.row[j]; l < Bt.row[j+1]; l++) {
+                    if (A.col[k] == Bt.col[l]) {
+                        mul += A.val[k] * Bt.val[l];
+                        break;
+                    }
+                }
             }
-            if (T.get(i,j) != 0.0)
-                T.nonzeros++;
+            std::cout << mul << '\n';
+            if (mul != 0.0) {
+                T.val.push_back(mul);
+                T.col.push_back(j);
+                row_nnz++;
+            }
         }
+        T.row[i+1] = T.row[i] + row_nnz;
     }
-*/
+    T.nonzeros = T.row[T.nrows];
+    T.if_empty = false;
     return T;
 }
 

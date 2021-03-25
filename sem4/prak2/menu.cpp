@@ -39,5 +39,7 @@ int main() {
     transpose(B3, B4);
     cout << endl;
     B4.print();
+    sparse_matrix B5 = B3 * B4;
+    cout << endl << B5 << endl;
     return 0;
 }
