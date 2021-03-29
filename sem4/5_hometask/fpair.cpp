@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cstdio>
+#include <iostream>
 
 class BadAddition {
     float A1, B1, A2, B2;
@@ -38,7 +39,7 @@ class Segment : public FloatPair {
 public:
     Segment (float start, float end) : FloatPair(start, end) {}
 
-    float Measure() const { return abs(this->get_B() - this->get_A()); }
+    float Measure() const { return std::abs(this->get_B() - this->get_A()); }
 
     Segment operator+ (const Segment & seg2) const {
         float s1(this->get_A()), e1(this->get_B()), s2(seg2.get_A()), e2(seg2.get_B());
