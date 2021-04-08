@@ -13,6 +13,7 @@ using namespace std;
 
 #define BACKLOG 16
 #define BUFLEN 1024
+#define DEFAULT_PORT 5050
 
 class Server {
 private:
@@ -113,19 +114,33 @@ void Server::Run() {
             close(Server_fd);
             exit(1);
         }
-//        if(strncmp(request, "GET", 3)) {
-        {
-            Send("501.html", "HTTP/1.1 501 NotImplemented", Client_fd);
+        if(strncmp(request, "GET", 3)) {
+            Send("src/501.html", "HTTP/1.1 501 NotImplemented", Client_fd);
+            shutdown(Client_fd, SHUT_RDWR);
+            close(Client_fd);
             cerr << "Error: BadRequest" << endl;
-        }
+        } else {
 
+            int i = 5;
+    /*
+            char c = buf[i];
+            while(c!=' ') c = buf[++i];
+    */
+            char path[i-3];
+            path[0] = '/';
+            path[1] = '\0';
+    cout << "Path: " << path << endl;
+            int Filefd;
+
+            Send("src/index.html", "HTTP/1.1 200 MyServer", Client_fd);
+        }
         shutdown(Client_fd, SHUT_RDWR);
         close(Client_fd);
     }
 }
 
 int main(int argc, char**argv) {
-    int portnum = 8080;
+    int portnum = DEFAULT_PORT;
     if (argc == 2)
         portnum = atoi(argv[1]);
 
