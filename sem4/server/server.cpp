@@ -42,6 +42,7 @@ to create server we need:
         exit(1);
     }
     struct sockaddr_in ServAddr;
+    memset(&ServAddr, 0, sizeof(ServAddr));
     ServAddr.sin_family = AF_INET;
     ServAddr.sin_port = htons(port);
     ServAddr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -62,10 +63,10 @@ Server::~Server() {
     close(Server_fd);
 }
 
-char* Send(const char* file, string header) {
+void Send(const char* file, string header, int sock_fd) {
     int fd = open(file, O_RDONLY);
     string str = header;
-    str += "\nAllow: GET\nServer: MyServer/0.1\nConnection: keep-alive\nContet-length: ";
+    str += "\nAllow: NOTHING\nServer: MyServer/1.1\nResponse-length: ";
 
     char c;
     int len = 0;
@@ -75,13 +76,24 @@ char* Send(const char* file, string header) {
     str += to_string(len);
     str += "\n\n";
 
+cout << str << endl;
+
     int n = str.length();
-    char* res = (char*)malloc(sizeof(char) * (n+1));
-    strcpy(res, str.c_str());
-    return res;
+    char* buf = (char*)malloc(sizeof(char) * (n+1));
+    strcpy(buf, str.c_str());
+    len = strlen(buf);
+    send(sock_fd, buf, len, 0);
+    free(buf);
+
+    char buf2[BUFLEN];
+    while((len = read(fd, buf2, BUFLEN)) > 0)
+        send(sock_fd, buf2, len, 0);
+
+    close(fd);
 }
 
 void Server::Run() {
+    int Counter = 0;
     while (1) {
         struct sockaddr_in ClientAddr;
         size_t ClAddrLen = sizeof(ClientAddr);
@@ -91,6 +103,9 @@ void Server::Run() {
             close(Server_fd);
             exit(1);
         }
+
+        cout << Counter++ << endl;
+
         int req = recv(Client_fd, request, BUFLEN, 0);
         if (req < 0) {
             cerr << "Server error" << endl;
@@ -100,11 +115,10 @@ void Server::Run() {
         }
 //        if(strncmp(request, "GET", 3)) {
         {
-            char* buf = Send("src/501.html", "HTTP/1.0 501 NotImplemented");
-            send(Client_fd, buf, strlen(buf), 0);
-            free(buf);
+            Send("501.html", "HTTP/1.1 501 NotImplemented", Client_fd);
             cerr << "Error: BadRequest" << endl;
         }
+
         shutdown(Client_fd, SHUT_RDWR);
         close(Client_fd);
     }
