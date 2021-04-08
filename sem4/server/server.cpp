@@ -13,7 +13,7 @@ using namespace std;
 
 #define BACKLOG 16
 #define BUFLEN 1024
-#define DEFAULT_PORT 5050
+#define DEFAULT_PORT 5000
 
 class Server {
 private:
@@ -120,19 +120,32 @@ void Server::Run() {
             close(Client_fd);
             cerr << "Error: BadRequest" << endl;
         } else {
-
             int i = 5;
-    /*
-            char c = buf[i];
-            while(c!=' ') c = buf[++i];
-    */
+            char c = request[i];
+            while(c != ' ') c = request[++i];
             char path[i-3];
-            path[0] = '/';
-            path[1] = '\0';
-    cout << "Path: " << path << endl;
+            if (i == 5) {
+                path[0] = '/';
+                path[1] = '\0';
+            } else {
+                copy(&request[5], &request[i], &path[0]);
+                path[i-5] = 0;
+            }
+            cout << "Path: " << path << endl;
             int Filefd;
-
-            Send("src/index.html", "HTTP/1.1 200 MyServer", Client_fd);
+            if ((i != 5) && (Filefd = open(path, O_RDONLY)) < 0) {
+                Send("src/404.html", "HTTP/1.1 404 NotFound", Client_fd);
+                shutdown(Client_fd, SHUT_RDWR);
+                close(Client_fd);
+                cerr << "Error 404" << endl;
+            } else {
+                if (i == 5)
+                    Send("src/index.html", "HTTP/1.1 200 MyServer", Client_fd);
+                else {
+                    close(Filefd);
+                    Send(path, "HTTP/1.1 200 MyServer", Client_fd);
+                }
+            }
         }
         shutdown(Client_fd, SHUT_RDWR);
         close(Client_fd);
