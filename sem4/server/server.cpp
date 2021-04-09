@@ -67,7 +67,7 @@ Server::~Server() {
 void Send(const char* file, string header, int sock_fd) {
     int fd = open(file, O_RDONLY);
     string str = header;
-    str += "\nAllow: NOTHING\nServer: MyServer/1.1\nResponse-length: ";
+    str += "\nAllow: NOTHING\nServer: MyServer/1.1\nContent-length: ";
 
     char c;
     int len = 0;
@@ -114,6 +114,7 @@ void Server::Run() {
             close(Server_fd);
             exit(1);
         }
+
         if(strncmp(request, "GET", 3)) {
             Send("src/501.html", "HTTP/1.1 501 NotImplemented", Client_fd);
             shutdown(Client_fd, SHUT_RDWR);
