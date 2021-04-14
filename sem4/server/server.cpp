@@ -8,11 +8,12 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <ctime>
 
 using namespace std;
 
 #define BACKLOG 16
-#define BUFLEN 1024
+#define BUFLEN 4096
 #define DEFAULT_PORT 5000
 
 class Server {
@@ -64,17 +65,25 @@ Server::~Server() {
     close(Server_fd);
 }
 
-void Send(const char* file, string header, int sock_fd) {
+void Send(const char* file, string header, int sock_fd, int port) {
     int fd = open(file, O_RDONLY);
     string str = header;
-    str += "\nAllow: NOTHING\nServer: MyServer/1.1\nContent-length: ";
-
+    str += "\nAllow: GET\nServer: MyServer/1.1\nContent-length: ";
+//CONTENT LENGTH
     char c;
     int len = 0;
     while(read(fd, &c, 1)) len++;
     lseek(fd, 0, 0);
-
     str += to_string(len);
+//DATE
+    str += "\nDate: ";
+    time_t now = time(0);
+    char* dt = ctime(&now);
+    str += dt;
+//HOST
+    str += "Host: 127.0.0.1:";
+    str += to_string(port);
+
     str += "\n\n";
 
 cout << str << endl;
@@ -115,36 +124,38 @@ void Server::Run() {
             exit(1);
         }
 
+cout << request << endl;
+
         if(strncmp(request, "GET", 3)) {
-            Send("src/501.html", "HTTP/1.1 501 NotImplemented", Client_fd);
+            Send("src/501.html", "HTTP/1.1 501 NotImplemented", Client_fd, port);
             shutdown(Client_fd, SHUT_RDWR);
             close(Client_fd);
             cerr << "Error: BadRequest" << endl;
         } else {
             int i = 5;
             char c = request[i];
-            while(c != ' ') c = request[++i];
-            char path[i-3];
-            if (i == 5) {
+            while(c != ' ') c = request[++i];  //skip to spaces
+            char path[i-3];                    //possible filename
+            if (i == 5) {                      //URI doesnt contain filename
                 path[0] = '/';
                 path[1] = '\0';
-            } else {
+            } else {                           //copy filename to path
                 copy(&request[5], &request[i], &path[0]);
                 path[i-5] = 0;
             }
             cout << "Path: " << path << endl;
             int Filefd;
-            if ((i != 5) && (Filefd = open(path, O_RDONLY)) < 0) {
-                Send("src/404.html", "HTTP/1.1 404 NotFound", Client_fd);
+            if ((i != 5) && (Filefd = open(path, O_RDONLY)) < 0) {          //cant open file
+                Send("src/404.html", "HTTP/1.1 404 NotFound", Client_fd, port);
                 shutdown(Client_fd, SHUT_RDWR);
                 close(Client_fd);
                 cerr << "Error 404" << endl;
-            } else {
+            } else {                                                        //if open or if homepage
                 if (i == 5)
-                    Send("src/index.html", "HTTP/1.1 200 MyServer", Client_fd);
+                    Send("src/index.html", "HTTP/1.1 200 MyServer", Client_fd, port);
                 else {
                     close(Filefd);
-                    Send(path, "HTTP/1.1 200 MyServer", Client_fd);
+                    Send(path, "HTTP/1.1 200 MyServer", Client_fd, port);
                 }
             }
         }
