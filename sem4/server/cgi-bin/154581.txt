@@ -1,3 +1,0 @@
-Content-type: text/html
-
-<html><body>Hi~!, ur args r : (null)</body></html>

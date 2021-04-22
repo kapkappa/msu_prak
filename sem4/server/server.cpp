@@ -88,6 +88,8 @@ void Server::Send(const char* file, string header, int sock_fd) {
     string str = header;
     str += "\nAllow: GET, HEAD";
     str += "\nServer: MyServer/1.1";
+//CONNECTION
+    str += "\nConnection: keep-alive";
 //CONTENT LENGTH
     str += "\nContent-length: ";
     char c;
@@ -153,27 +155,29 @@ void Server::Run() {
             close(Server_fd);
             exit(1);
         }
-cout << Counter++ << endl;
-
         int req = recv(Client_fd, request, BUFLEN, 0);
         if (req < 0) {
             cerr << "Server error" << endl;
+            shutdown(Client_fd, SHUT_RDWR);
             close(Client_fd);
             close(Server_fd);
             exit(1);
         }
+        if(!req) {
+            shutdown(Client_fd, SHUT_RDWR);
+            close(Client_fd);
+        }
+cout << Counter++ << endl;
 cout << request << endl;
 
         if(strncmp(request, "GET", 3) && strncmp(request, "HEAD", 4)) {
             Send("src/501.html", "HTTP/1.1 501 NotImplemented", Client_fd);
-            shutdown(Client_fd, SHUT_RDWR);
-            close(Client_fd);
             cerr << "Error: BadRequest" << endl;
         } else {                               //GET
             int i = 5;
             char c = request[i];
             while(c != ' ') c = request[++i];  //skip to spaces
-            char path[i-3];                    //possible filename
+            char path[i-5];                    //possible filename
             if (i == 5) {                      //URI doesnt contain filename
                 path[0] = '/';
                 path[1] = '\0';
@@ -184,6 +188,8 @@ cout << request << endl;
 cout << "Length: " << strlen(path) << " Filename: " << path << endl;
 
             if(!strncmp(path, "cgi-bin", 7)) {
+cout << "CGI" << endl;
+
                 int status;
                 int pid;
                 string logfile = to_string(getpid()) + ".txt";
@@ -202,7 +208,11 @@ cout << "Length: " << strlen(path) << " Filename: " << path << endl;
 
                     char params[strlen(path)-12];
                     copy(&path[12], &path[strlen(path)], &params[0]);
-                    char* env[] = {params, NULL};
+
+                    string Params = "params= ";
+                    Params += params;
+
+                    char* env[] = {(char*)Params.c_str(), NULL};
                     //EXEC
                     dup2(fd, 1);
                     execve(exec_filename.c_str(), argv, env);
@@ -212,14 +222,14 @@ cout << "Length: " << strlen(path) << " Filename: " << path << endl;
                 wait(&status);
                 if (WIFEXITED(status)) {
                     //HANDLING
-                    if (WEXITSTATUS(status)) {
+                    if (WEXITSTATUS(status) == 0) {
                         //OK
-                        cerr << "CGI has finihed with status " << WEXITSTATUS(status) << endl;
-                        Send("src/cgi.html", "HTTP/1.1 500 MyServer", Client_fd);
-                    } else {
-                        //NOT OK
                         logfile = "cgi-bin/" + logfile;
                         Send(logfile.c_str(), "HTTP/1.1 200 MyServer", Client_fd);
+                    } else {
+                        //NOT OK
+                        cerr << "CGI has finihed with status " << WEXITSTATUS(status) << endl;
+                        Send("src/cgi.html", "HTTP/1.1 500 MyServer", Client_fd);
                     }
                 } else if (WIFSIGNALED(status)) {
                     cerr << "CGI has finished with signal " << WIFSIGNALED(status) << endl;
@@ -230,17 +240,16 @@ cout << "Length: " << strlen(path) << " Filename: " << path << endl;
                 int Filefd = open(path, O_RDONLY);
                 struct stat buff;
                 fstat(Filefd, &buff);
+                int tmp = Filefd;
+                close(Filefd);
                 bool IS_FILE = buff.st_mode & S_IFREG;
-                if ((i != 5) && (!IS_FILE || (Filefd < 0))) {          //cant open file
+                if ((i != 5) && (!IS_FILE || (tmp < 0))) {          //cant open file
                     Send("src/404.html", "HTTP/1.1 404 NotFound", Client_fd);
-                    shutdown(Client_fd, SHUT_RDWR);
-                    close(Client_fd);
                     cerr << "Error 404" << endl;
                 } else {                                                        //if open or if homepage
-                    if (i == 5)
+                    if (i == 5) {
                         Send("src/index.html", "HTTP/1.1 200 MyServer", Client_fd);
-                    else {
-                        close(Filefd);
+                    } else {
                         Send(path, "HTTP/1.1 200 MyServer", Client_fd);
                     }
                 }
