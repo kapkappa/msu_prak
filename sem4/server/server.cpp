@@ -125,8 +125,8 @@ void Server::Send(const char* file, string header, int sock_fd) {
 //REFER
 //TODO - get this line from request
     str += "\n\n";
-
 cout << str << endl;
+
     int n = str.length();
     char* buf = (char*)malloc(sizeof(char) * (n+1));
     strcpy(buf, str.c_str());
@@ -181,23 +181,50 @@ cout << request << endl;
                 copy(&request[5], &request[i], &path[0]);
                 path[i-5] = 0;
             }
-cout << "Filename: " << path << endl;
+cout << "Length: " << strlen(path) << " Filename: " << path << endl;
 
             if(!strncmp(path, "cgi-bin", 7)) {
                 int status;
                 int pid;
-                string name = to_string(getpid()) + ".txt";
+                string logfile = to_string(getpid()) + ".txt";
                 if((pid = fork()) < 0) {
                     cerr << "Can't make process" << endl;
                     exit(1);
                 }
-                if (!pid) {
+                if (pid == 0) {
                     chdir("./cgi-bin");
-                    int fd = open(name.c_str(), O_WRONLY|O_CREAT|O_TRUNC, 0644);
-                    //FIXME
+                    //UNIQ LOG FILE
+                    int fd = open(logfile.c_str(), O_WRONLY|O_CREAT|O_TRUNC, 0644);
+                    //get exec filename
+                    string exec_filename = "./cgi";
+                    //CREATE ENVIROMENT
+                    char* argv[] = {(char*)exec_filename.c_str(), NULL};
+
+                    char params[strlen(path)-12];
+                    copy(&path[12], &path[strlen(path)], &params[0]);
+                    char* env[] = {params, NULL};
+                    //EXEC
+                    dup2(fd, 1);
+                    execve(exec_filename.c_str(), argv, env);
+                    //TODO CLEAR MEMORY?
+                    exit(1);
                 }
                 wait(&status);
-
+                if (WIFEXITED(status)) {
+                    //HANDLING
+                    if (WEXITSTATUS(status)) {
+                        //OK
+                        cerr << "CGI has finihed with status " << WEXITSTATUS(status) << endl;
+                        Send("src/cgi.html", "HTTP/1.1 500 MyServer", Client_fd);
+                    } else {
+                        //NOT OK
+                        logfile = "cgi-bin/" + logfile;
+                        Send(logfile.c_str(), "HTTP/1.1 200 MyServer", Client_fd);
+                    }
+                } else if (WIFSIGNALED(status)) {
+                    cerr << "CGI has finished with signal " << WIFSIGNALED(status) << endl;
+                    Send("src/cgi.html", "HTTP/1.1 500 MyServer", Client_fd);
+                }
 
             } else {
                 int Filefd = open(path, O_RDONLY);
