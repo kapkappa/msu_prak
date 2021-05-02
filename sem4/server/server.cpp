@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/select.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
@@ -25,9 +26,10 @@ private:
     char request[BUFLEN];
 public:
     Server(int portnum);
-    void Run();
+    int new_connection(int, int);
+    void req_handle(int);
     ~Server() { close(Server_fd); }
-//    int get_port() const { return port; }
+    int get_sock() const { return Server_fd; }
     void Send(const char*, string, int);
 };
 
@@ -144,120 +146,107 @@ cout << str << endl;
     close(fd);
 }
 
-void Server::Run() {
-    int Counter = 0;
-    while (1) {
-        struct sockaddr_in ClientAddr;
-        size_t ClAddrLen = sizeof(ClientAddr);
-        int Client_fd = accept(Server_fd, (struct sockaddr*)&ClientAddr, (socklen_t*)&ClAddrLen);
-        if (Client_fd < 0) {
-            cerr << "Client error" << endl;
-            close(Server_fd);
-            exit(1);
-        }
-        int req = recv(Client_fd, request, BUFLEN, 0);
-        if (req < 0) {
-            cerr << "Server error" << endl;
-            shutdown(Client_fd, SHUT_RDWR);
-            close(Client_fd);
-            close(Server_fd);
-            exit(1);
-        }
-        if(!req) {
-            shutdown(Client_fd, SHUT_RDWR);
-            close(Client_fd);
-        }
-cout << Counter++ << endl;
-cout << request << endl;
-
-        if(strncmp(request, "GET", 3) && strncmp(request, "HEAD", 4)) {
-            Send("src/501.html", "HTTP/1.1 501 NotImplemented", Client_fd);
-            cerr << "Error: BadRequest" << endl;
-        } else {                               //GET
-            int i = 5;
-            char c = request[i];
-            while(c != ' ') c = request[++i];  //skip to spaces
-            char path[i-5];                    //possible filename
-            if (i == 5) {                      //URI doesnt contain filename
-                path[0] = '/';
-                path[1] = '\0';
-            } else {                           //copy filename to path
-                copy(&request[5], &request[i], &path[0]);
-                path[i-5] = 0;
-            }
-cout << "Length: " << strlen(path) << " Filename: " << path << endl;
-
-            if(!strncmp(path, "cgi-bin", 7)) {
-cout << "CGI" << endl;
-
-                int status;
-                int pid;
-                string logfile = to_string(getpid()) + ".txt";
-                if((pid = fork()) < 0) {
-                    cerr << "Can't make process" << endl;
-                    exit(1);
-                }
-                if (pid == 0) {
-                    chdir("./cgi-bin");
-                    //UNIQ LOG FILE
-                    int fd = open(logfile.c_str(), O_WRONLY|O_CREAT|O_TRUNC, 0644);
-                    //get exec filename
-                    string exec_filename = "./cgi";
-                    //CREATE ENVIROMENT
-                    char* argv[] = {(char*)exec_filename.c_str(), NULL};
-
-                    char params[strlen(path)-12];
-                    copy(&path[12], &path[strlen(path)], &params[0]);
-
-                    string Params = "params= ";
-                    Params += params;
-
-                    char* env[] = {(char*)Params.c_str(), NULL};
-                    //EXEC
-                    dup2(fd, 1);
-                    execve(exec_filename.c_str(), argv, env);
-                    //TODO CLEAR MEMORY?
-                    exit(1);
-                }
-                wait(&status);
-                if (WIFEXITED(status)) {
-                    //HANDLING
-                    if (WEXITSTATUS(status) == 0) {
-                        //OK
-                        logfile = "cgi-bin/" + logfile;
-                        Send(logfile.c_str(), "HTTP/1.1 200 MyServer", Client_fd);
-                    } else {
-                        //NOT OK
-                        cerr << "CGI has finihed with status " << WEXITSTATUS(status) << endl;
-                        Send("src/cgi.html", "HTTP/1.1 500 MyServer", Client_fd);
-                    }
-                } else if (WIFSIGNALED(status)) {
-                    cerr << "CGI has finished with signal " << WIFSIGNALED(status) << endl;
-                    Send("src/cgi.html", "HTTP/1.1 500 MyServer", Client_fd);
-                }
-
-            } else {
-                int Filefd = open(path, O_RDONLY);
-                struct stat buff;
-                fstat(Filefd, &buff);
-                int tmp = Filefd;
-                close(Filefd);
-                bool IS_FILE = buff.st_mode & S_IFREG;
-                if ((i != 5) && (!IS_FILE || (tmp < 0))) {          //cant open file
-                    Send("src/404.html", "HTTP/1.1 404 NotFound", Client_fd);
-                    cerr << "Error 404" << endl;
-                } else {                                                        //if open or if homepage
-                    if (i == 5) {
-                        Send("src/index.html", "HTTP/1.1 200 MyServer", Client_fd);
-                    } else {
-                        Send(path, "HTTP/1.1 200 MyServer", Client_fd);
-                    }
-                }
-            }
-        }
+int Server::new_connection(int Client_fd, int i) {
+    int len = recv(Client_fd, request, BUFLEN, 0);
+    if (len < 0) {
+        cerr << "Server error" << endl;
         shutdown(Client_fd, SHUT_RDWR);
         close(Client_fd);
+        close(Server_fd);
+        exit(1);
     }
+    cout << request << endl;
+    return len;
+}
+
+void Server::req_handle(int Client_fd) {
+    if(strncmp(request, "GET", 3) && strncmp(request, "HEAD", 4)) {
+        Send("src/501.html", "HTTP/1.1 501 NotImplemented", Client_fd);
+        cerr << "Error: BadRequest" << endl;
+    } else {                               //GET
+        int i = 5;
+        char c = request[i];
+        while(c != ' ') c = request[++i];  //skip to spaces
+        char path[i-5];                    //possible filename
+        if (i == 5) {                      //URI doesnt contain filename
+            path[0] = '/';
+            path[1] = '\0';
+        } else {                           //copy filename to path
+            copy(&request[5], &request[i], &path[0]);
+            path[i-5] = 0;
+        }
+cout << "Length: " << strlen(path) << " Filename: " << path << endl;
+
+        if(!strncmp(path, "cgi-bin", 7)) {
+cout << "CGI" << endl;
+
+            int status;
+            int pid;
+            string logfile = to_string(getpid()) + ".txt";
+            if((pid = fork()) < 0) {
+                cerr << "Can't make process" << endl;
+                exit(1);
+            }
+            if (pid == 0) {
+                chdir("./cgi-bin");
+                //UNIQ LOG FILE
+                int fd = open(logfile.c_str(), O_WRONLY|O_CREAT|O_TRUNC, 0644);
+                //get exec filename
+                string exec_filename = "./cgi";
+                //CREATE ENVIROMENT
+                char* argv[] = {(char*)exec_filename.c_str(), NULL};
+
+                char params[strlen(path)-12];
+                copy(&path[12], &path[strlen(path)], &params[0]);
+
+                string Params = "params= ";
+                Params += params;
+
+                char* env[] = {(char*)Params.c_str(), NULL};
+                //EXEC
+                dup2(fd, 1);
+                execve(exec_filename.c_str(), argv, env);
+                //TODO CLEAR MEMORY?
+                exit(1);
+            }
+            wait(&status);
+            if (WIFEXITED(status)) {
+                //HANDLING
+                if (WEXITSTATUS(status) == 0) {
+                    //OK
+                    logfile = "cgi-bin/" + logfile;
+                    Send(logfile.c_str(), "HTTP/1.1 200 MyServer", Client_fd);
+                } else {
+                    //NOT OK
+                    cerr << "CGI has finihed with status " << WEXITSTATUS(status) << endl;
+                    Send("src/cgi.html", "HTTP/1.1 500 MyServer", Client_fd);
+                }
+            } else if (WIFSIGNALED(status)) {
+                cerr << "CGI has finished with signal " << WIFSIGNALED(status) << endl;
+                Send("src/cgi.html", "HTTP/1.1 500 MyServer", Client_fd);
+            }
+
+        } else {
+            int Filefd = open(path, O_RDONLY);
+            struct stat buff;
+            fstat(Filefd, &buff);
+            int tmp = Filefd;
+            close(Filefd);
+            bool IS_FILE = buff.st_mode & S_IFREG;
+            if ((i != 5) && (!IS_FILE || (tmp < 0))) {          //cant open file
+                Send("src/404.html", "HTTP/1.1 404 NotFound", Client_fd);
+                cerr << "Error 404" << endl;
+            } else {                                                        //if open or if homepage
+                if (i == 5) {
+                    Send("src/index.html", "HTTP/1.1 200 MyServer", Client_fd);
+                } else {
+                    Send(path, "HTTP/1.1 200 MyServer", Client_fd);
+                }
+            }
+        }
+    }
+    //shutdown(Client_fd, SHUT_RDWR);
+    //close(Client_fd);
 }
 
 int main(int argc, char**argv) {
@@ -265,6 +254,60 @@ int main(int argc, char**argv) {
     if (argc == 2)
         portnum = atoi(argv[1]);
     Server server(portnum);
-    server.Run();
+
+    fd_set readset, allset;
+    timeval timeout;
+    timeout.tv_sec = 10;
+    timeout.tv_usec = 0;
+    int nready, maxfd, maxi, sockfd, clients[FD_SETSIZE];
+    maxfd = server.get_sock();
+    maxi =   -1;
+    for(int i = 0; i < FD_SETSIZE; i++)
+        clients[i] = -1;
+
+    FD_ZERO(&allset);
+    FD_SET(server.get_sock(), &allset);
+    for(;;) {
+        readset = allset;
+        nready = select(maxfd+1, &readset, NULL, NULL, NULL);
+        if (FD_ISSET(server.get_sock(), &readset)) {
+            // connect with new client
+            struct sockaddr_in ClientAddr;
+            size_t ClAddrLen = sizeof(ClientAddr);
+            int Client_fd = accept(server.get_sock(), (struct sockaddr*)&ClientAddr, (socklen_t*)&ClAddrLen);
+            if (Client_fd < 0) {
+                cerr << "Client error" << endl;
+                exit(1);
+            }
+            for(int i = 0; i < FD_SETSIZE; i++) {
+                if (clients[i] < 0) {
+                    clients[i] = Client_fd;
+                    if(i > maxi)
+                        maxi = i;
+                    break;
+                }
+            }
+            FD_SET(Client_fd, &allset);
+            if(Client_fd > maxfd)
+                maxfd = Client_fd;
+            if(--nready <= 0)
+                continue;   //no more ready descriptors
+        }
+        for(int i = 0; i <= maxi; i++) { //check all clients for data
+            if((sockfd = clients[i]) < 0)
+                continue;
+            if(FD_ISSET(sockfd, &readset)) {
+                if(server.new_connection(sockfd, i) == 0) {
+                    close(sockfd);
+                    FD_CLR(sockfd, &allset);
+                    clients[i] = -1;
+                } else
+                    server.req_handle(sockfd);
+
+                if(--nready <= 0)
+                    break;
+            }
+        }
+    }
     return 0;
 }
