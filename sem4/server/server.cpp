@@ -187,7 +187,6 @@ cout << "Length: " << strlen(path) << " Filename: " << path << endl;
         if(!strncmp(path, "cgi-bin", 7)) {
 cout << "CGI" << endl;
 
-//            int status;
             int pid;
             if((pid = fork()) < 0) {
                 cerr << "Can't make process" << endl;
@@ -207,14 +206,19 @@ cout << "CGI" << endl;
                 char params[strlen(path)-12];
                 copy(&path[12], &path[strlen(path)], &params[0]);
 
-                string Params = "params= ";
-                Params += params;
+                char**env = new char*[4];
+				env[0]=new char[(int)strlen("CONTENT_TYPE=text/plain") + 1];
+				strcpy(env[0], "CONTENT_TYPE=text/plain");
+                env[1] = new char[(int)strlen("SERVER_PROTOCOL=HTTP/1.1") + 1];
+				strcpy(env[1], "SERVER_PROTOCOL=HTTP/1.1");
+                env[2] = new char[(int)strlen("QUERY_STRING=") + 1 + (int)strlen(params)];
+				strcpy(env[2], "QUERY_STRING=");
+                strcat(env[2], params);
+                env[3] = NULL;
 
-                char* env[] = {(char*)Params.c_str(), NULL};
-                //EXEC
                 dup2(fd, 1);
                 execve(exec_filename.c_str(), argv, env);
-                //TODO CLEAR MEMORY?
+                delete[]env;
                 exit(1);
             }
 /*
