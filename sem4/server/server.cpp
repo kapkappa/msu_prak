@@ -229,7 +229,7 @@ cout << "CGI" << endl;
                 strcpy(env[4], "SCRIPT_NAME=cgi-bin/");
                 strcat(env[4], exec_filename);
                 env[5] = new char[(int)strlen("QUERY_STRING=") + (int)strlen(params) + 1];
-			    strcpy(env[5], "QUERY_STRING=");
+                strcpy(env[5], "QUERY_STRING=");
                 strcat(env[5], params);
                 env[6] = NULL;
 
