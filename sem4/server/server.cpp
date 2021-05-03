@@ -33,7 +33,7 @@ public:
     int new_connection(int, int);
     void req_handle(int);
     ~Server() { close(Server_fd); }
-    int get_sock() const { return Server_fd; }
+    int get_sock() { return Server_fd; }
     int get_port() const { return port; }
 //    void Send(const char*, string, int);
 };
@@ -205,6 +205,7 @@ cout << "CGI" << endl;
 
                 char params[strlen(path)-12];
                 copy(&path[12], &path[strlen(path)], &params[0]);
+                params[strlen(path)-12] = 0;
 
                 char**env = new char*[4];
 				env[0]=new char[(int)strlen("CONTENT_TYPE=text/plain") + 1];
@@ -221,24 +222,6 @@ cout << "CGI" << endl;
                 delete[]env;
                 exit(1);
             }
-/*
-            wait(&status);
-            if (WIFEXITED(status)) {
-                //HANDLING
-                if (WEXITSTATUS(status) == 0) {
-                    //OK
-                    logfile = "cgi-bin/" + logfile;
-                    Send(logfile.c_str(), "HTTP/1.1 200 MyServer", Client_fd);
-                } else {
-                    //NOT OK
-                    cerr << "CGI has finihed with status " << WEXITSTATUS(status) << endl;
-                    Send("src/cgi.html", "HTTP/1.1 500 MyServer", Client_fd);
-                }
-            } else if (WIFSIGNALED(status)) {
-                cerr << "CGI has finished with signal " << WIFSIGNALED(status) << endl;
-                Send("src/cgi.html", "HTTP/1.1 500 MyServer", Client_fd);
-            }
-*/
         } else {
             int Filefd = open(path, O_RDONLY);
             struct stat buff;
@@ -260,6 +243,12 @@ cout << "CGI" << endl;
     }
     //shutdown(Client_fd, SHUT_RDWR);
     //close(Client_fd);
+}
+
+void MY_SIGPIPE (int s) {
+//    signal(SIGPIPE, MY_SIGPIPE);
+    cout << "SIGPIPE RECIEVED\n";
+    exit(1);
 }
 
 void MY_SIGCHLD (int s) {
@@ -302,7 +291,7 @@ int main(int argc, char**argv) {
     Server server(portnum);
 
     signal(SIGCHLD, MY_SIGCHLD);
-    signal(SIGPIPE, SIG_IGN);
+    signal(SIGPIPE, MY_SIGPIPE);
 
     fd_set readset, allset;
     timeval timeout;
@@ -318,16 +307,16 @@ int main(int argc, char**argv) {
     FD_SET(server.get_sock(), &allset);
     for(;;) {
         readset = allset;
+        fcntl(server.get_sock(), F_SETFL, O_NONBLOCK);
         nready = select(maxfd+1, &readset, NULL, NULL, NULL);
         if (FD_ISSET(server.get_sock(), &readset)) {
             // connect with new client
             struct sockaddr_in ClientAddr;
             size_t ClAddrLen = sizeof(ClientAddr);
             int Client_fd = accept(server.get_sock(), (struct sockaddr*)&ClientAddr, (socklen_t*)&ClAddrLen);
-//            fcntl(Client_fd, F_SETFL, O_NONBLOCK);
             if (Client_fd < 0) {
                 cerr << "Client error" << endl;
-                exit(1);
+//                exit(1);
             }
             for(int i = 0; i < FD_SETSIZE; i++) {
                 if (clients[i] < 0) {
