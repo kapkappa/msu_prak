@@ -216,8 +216,8 @@ cout << "CGI" << endl;
                 params[strlen(path)-12] = 0;
 
                 char**env = new char*[7];
-                env[0] = new char[(int)strlen("SERVER_ADDR=127.0.0.5") + 1];
-                strcpy(env[0], "SERVER_ADDR=127.0.0.5");
+                env[0] = new char[(int)strlen("SERVER_ADDR=127.0.0.1") + 1];
+                strcpy(env[0], "SERVER_ADDR=127.0.0.1");
                 env[1] = new char[(int)strlen("SERVER_PORT=XXXX") + 1];
                 strcpy(env[1], "SERVER_PORT=");
                 strcat(env[1], to_string(port).c_str());
