@@ -34,8 +34,7 @@ public:
     void req_handle(int);
     ~Server() { close(Server_fd); }
     int get_sock() { return Server_fd; }
-    int get_port() const { return port; }
-//    void Send(const char*, string, int);
+//    int get_port() const { return port; }
 };
 
 int Server::port = DEFAULT_PORT;
@@ -48,7 +47,6 @@ to create server we need:
     3. bind socket - i.e. give the server an adress, bind(socket FD, struct sockaddr_in, sizeof struct)
     4. put into listening mode
 */
-//TODO: Exceptions for socket, bind, listen. Or, at least, appropriate error handling
     port = portnum;
     if ((Server_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         cerr << "Cant create socket" << endl;
@@ -60,17 +58,28 @@ to create server we need:
     ServAddr.sin_port = htons(port);
     ServAddr.sin_addr.s_addr = htonl(INADDR_ANY);
     if (bind(Server_fd, (struct sockaddr*)&ServAddr, sizeof(ServAddr)) < 0) {
-        cerr << "cant bind socket" << endl;
+        cerr << "Cant bind socket" << endl;
         close(Server_fd);
         exit(1);
     }
     if (listen(Server_fd, BACKLOG) < 0) {
-        cerr << "cant listen" << endl;
+        cerr << "Cant listen" << endl;
         exit(1);
     }
 }
 
 enum type { TXT, JPG, PNG, HTML};
+
+char* getfilename(char* path) {
+    int i = 8;
+    while(path[i] && (path[i] != '?')) i++;
+    int len = i-8;
+    char* filename = new char[len];
+    copy(&path[8], &path[i], &filename[0]);
+    filename[i-8] = 0;
+    cout << filename << endl;
+    return filename;
+}
 
 int get_type(const char*req) {
     int i = 0;
@@ -133,10 +142,8 @@ void Send(const char* file, string header, int sock_fd) {
 //HOST
     str += "Host: 127.0.0.1:";
     str += to_string(Server::port);
-//REFER
-//TODO - get this line from request
     str += "\n\n";
-cout << str << endl;
+    cout << str << endl;
 
     int n = str.length();
     char* buf = (char*)malloc(sizeof(char) * (n+1));
@@ -199,26 +206,35 @@ cout << "CGI" << endl;
                 string logfile = to_string(getpid()) + ".txt";
                 int fd = open(logfile.c_str(), O_WRONLY|O_CREAT|O_TRUNC, 0644);
                 //get exec filename
-                string exec_filename = "./cgi";
+                char* exec_filename = getfilename(path);
+                cout << "FILEMAME: " << exec_filename << endl;
                 //CREATE ENVIROMENT
-                char* argv[] = {(char*)exec_filename.c_str(), NULL};
+                char* argv[] = {exec_filename, NULL};
 
                 char params[strlen(path)-12];
                 copy(&path[12], &path[strlen(path)], &params[0]);
                 params[strlen(path)-12] = 0;
 
-                char**env = new char*[4];
-				env[0]=new char[(int)strlen("CONTENT_TYPE=text/plain") + 1];
-				strcpy(env[0], "CONTENT_TYPE=text/plain");
-                env[1] = new char[(int)strlen("SERVER_PROTOCOL=HTTP/1.1") + 1];
-				strcpy(env[1], "SERVER_PROTOCOL=HTTP/1.1");
-                env[2] = new char[(int)strlen("QUERY_STRING=") + 1 + (int)strlen(params)];
-				strcpy(env[2], "QUERY_STRING=");
-                strcat(env[2], params);
-                env[3] = NULL;
+                char**env = new char*[7];
+                env[0] = new char[(int)strlen("SERVER_ADDR=127.0.0.5") + 1];
+                strcpy(env[0], "SERVER_ADDR=127.0.0.5");
+                env[1] = new char[(int)strlen("SERVER_PORT=XXXX") + 1];
+                strcpy(env[1], "SERVER_PORT=");
+                strcat(env[1], to_string(port).c_str());
+                env[2] = new char[(int)strlen("SERVER_PROTOCOL=HTTP/1.1") + 1];
+				strcpy(env[2], "SERVER_PROTOCOL=HTTP/1.1");
+				env[3] = new char[(int)strlen("CONTENT_TYPE=text/plain") + 1];
+				strcpy(env[3], "CONTENT_TYPE=text/plain");
+                env[4] = new char[(int)strlen("SCRIPT_NAME=cgi-bin/") + (int)strlen(exec_filename) + 1];
+                strcpy(env[4], "SCRIPT_NAME=cgi-bin/");
+                strcat(env[4], exec_filename);
+                env[5] = new char[(int)strlen("QUERY_STRING=") + (int)strlen(params) + 1];
+				strcpy(env[5], "QUERY_STRING=");
+                strcat(env[5], params);
+                env[6] = NULL;
 
                 dup2(fd, 1);
-                execve(exec_filename.c_str(), argv, env);
+                execve(exec_filename, argv, env);
                 delete[]env;
                 exit(1);
             }
