@@ -12,6 +12,7 @@
 #include <ctime>
 #include <stdio.h>
 #include <sys/wait.h>
+#include <map>
 
 using namespace std;
 
@@ -19,19 +20,25 @@ using namespace std;
 #define BUFLEN 4096
 #define DEFAULT_PORT 5000
 
+std::map<int, int> ARR{};
+
+char request[BUFLEN];
+
 class Server {
 private:
     int Server_fd;
-    int port;
-    char request[BUFLEN];
 public:
+    static int port;
     Server(int portnum);
     int new_connection(int, int);
     void req_handle(int);
     ~Server() { close(Server_fd); }
     int get_sock() const { return Server_fd; }
-    void Send(const char*, string, int);
+    int get_port() const { return port; }
+//    void Send(const char*, string, int);
 };
+
+int Server::port = DEFAULT_PORT;
 
 Server::Server(int portnum) {
 /*
@@ -85,7 +92,7 @@ int get_type(const char*req) {
     return TXT;
 }
 
-void Server::Send(const char* file, string header, int sock_fd) {
+void Send(const char* file, string header, int sock_fd) {
     int fd = open(file, O_RDONLY);
     string str = header;
     str += "\nAllow: GET, HEAD";
@@ -125,7 +132,7 @@ void Server::Send(const char* file, string header, int sock_fd) {
     str += ctime(&buff.st_mtime);
 //HOST
     str += "Host: 127.0.0.1:";
-    str += to_string(port);
+    str += to_string(Server::port);
 //REFER
 //TODO - get this line from request
     str += "\n\n";
@@ -180,16 +187,17 @@ cout << "Length: " << strlen(path) << " Filename: " << path << endl;
         if(!strncmp(path, "cgi-bin", 7)) {
 cout << "CGI" << endl;
 
-            int status;
+//            int status;
             int pid;
-            string logfile = to_string(getpid()) + ".txt";
             if((pid = fork()) < 0) {
                 cerr << "Can't make process" << endl;
                 exit(1);
-            }
-            if (pid == 0) {
+            } else if (pid > 0) {
+                ARR.insert({pid, Client_fd});
+            } else if (pid == 0) {
                 chdir("./cgi-bin");
                 //UNIQ LOG FILE
+                string logfile = to_string(getpid()) + ".txt";
                 int fd = open(logfile.c_str(), O_WRONLY|O_CREAT|O_TRUNC, 0644);
                 //get exec filename
                 string exec_filename = "./cgi";
@@ -209,6 +217,7 @@ cout << "CGI" << endl;
                 //TODO CLEAR MEMORY?
                 exit(1);
             }
+/*
             wait(&status);
             if (WIFEXITED(status)) {
                 //HANDLING
@@ -225,7 +234,7 @@ cout << "CGI" << endl;
                 cerr << "CGI has finished with signal " << WIFSIGNALED(status) << endl;
                 Send("src/cgi.html", "HTTP/1.1 500 MyServer", Client_fd);
             }
-
+*/
         } else {
             int Filefd = open(path, O_RDONLY);
             struct stat buff;
@@ -249,11 +258,47 @@ cout << "CGI" << endl;
     //close(Client_fd);
 }
 
+void MY_SIGCHLD (int s) {
+    signal(SIGCHLD, MY_SIGCHLD);
+    int status=0, pid;
+    if ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+        //HANDLE CGI ENDING
+
+        auto search = ARR.find(pid);
+        int sockfd = search->second;
+
+        if (WIFEXITED(status)) {
+            if (WEXITSTATUS(status) == 0) {
+                string logfile = "cgi-bin/" + to_string(pid) + ".txt";
+                Send(logfile.c_str(), "HTTP/1.1 200 MyServer", sockfd);
+            } else {
+                cerr << "CGI has finihed with status " << WEXITSTATUS(status) << endl;
+                Send("src/cgi.html", "HTTP/1.1 500 MyServer", sockfd);
+            }
+        } else if (WIFSIGNALED(status)) {
+            cerr << "CGI has finished with signal " << WIFSIGNALED(status) << endl;
+            Send("src/cgi.html", "HTTP/1.1 500 MyServer", sockfd);
+        }
+
+        ARR.extract(pid);
+    }
+}
+
+bool is_waiting(int sockfd) {
+    for(auto it = ARR.begin(); it != ARR.end(); ++it)
+        if (it->second == sockfd)
+            return true;
+    return false;
+}
+
 int main(int argc, char**argv) {
     int portnum = DEFAULT_PORT;
     if (argc == 2)
         portnum = atoi(argv[1]);
     Server server(portnum);
+
+    signal(SIGCHLD, MY_SIGCHLD);
+    signal(SIGPIPE, SIG_IGN);
 
     fd_set readset, allset;
     timeval timeout;
@@ -275,6 +320,7 @@ int main(int argc, char**argv) {
             struct sockaddr_in ClientAddr;
             size_t ClAddrLen = sizeof(ClientAddr);
             int Client_fd = accept(server.get_sock(), (struct sockaddr*)&ClientAddr, (socklen_t*)&ClAddrLen);
+//            fcntl(Client_fd, F_SETFL, O_NONBLOCK);
             if (Client_fd < 0) {
                 cerr << "Client error" << endl;
                 exit(1);
@@ -297,7 +343,8 @@ int main(int argc, char**argv) {
             if((sockfd = clients[i]) < 0)
                 continue;
             if(FD_ISSET(sockfd, &readset)) {
-                if(server.new_connection(sockfd, i) == 0) {
+                if (is_waiting(sockfd)) {}    //if sockfd is waiting for cgi
+                else if (server.new_connection(sockfd, i) == 0) {
                     close(sockfd);
                     FD_CLR(sockfd, &allset);
                     clients[i] = -1;
