@@ -1,5 +1,6 @@
 #include "dense_matrix.h"
 
+#include <cassert>
 #include <cstdint>
 #include <iostream>
 #include <random>
@@ -28,4 +29,23 @@ void dense_matrix::generate() {
         val.push_back(dis(gen));
     std::cout << "Generation completed\n";
     if_empty = false;
+}
+
+std::vector<double> dense_matrix::get_column(uint64_t index) const {
+    assert(index < ncols);
+    std::vector<double>column;
+    for (uint64_t i = 0; i < nrows; i++)
+        column.emplace_back(val[i * nrows + index]);
+
+    return column;
+}
+
+std::vector<double> dense_matrix::get_minor_column(uint64_t index) const {
+    assert(index < ncols);
+    assert(index < nrows);
+    std::vector<double> column;
+    for (uint64_t i = index; i < nrows; i++)
+        column.emplace_back(val[i * nrows + index]);
+
+    return column;
 }
