@@ -19,16 +19,16 @@ void dense_matrix::print() const {
 }
 
 void dense_matrix::generate() {
+    std::cout << "Generation started\n";
     std::random_device rd;
     std::mt19937 gen(rd());
 //    std::uniform_int_distribution<> dis(-INT_MAX, INT_MAX);
-//    std::normal_distribution<> dis(0, 1000);
-    std::binomial_distribution<> dis(1000, 0.5);
+    std::normal_distribution<> dis(0, 1000);
+//    std::binomial_distribution<> dis(1000, 0.5);
     val.resize(0);
     for (uint64_t i = 0; i < nrows; i++) {
         for (uint64_t j = 0; j < ncols; j++) {
             val.push_back(dis(gen));
-//            val.push_back((i+j)/2);
         }
     }
     std::cout << "Generation completed\n";
@@ -49,7 +49,7 @@ std::vector<double> dense_matrix::get_minor_column(uint64_t index) const {
     assert(index < nrows);
     std::vector<double> column;
     for (uint64_t i = index; i < nrows; i++)
-        column.emplace_back(val[i * nrows + index]);
+        column.push_back(val[i * nrows + index]);
 
     return column;
 }

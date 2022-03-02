@@ -21,31 +21,34 @@ int main(int argc, char** argv) {
 
     dense_matrix A(size, size);
     A.generate();
+
 //    A.print();
 
-    uint64_t ncols = A.ncols;
-    std::vector<double> b = generate_vector(A, ncols);
+    std::vector<double> b = generate_vector(A, size);
 
-    std::vector<double> abs_res;
+    double t0 = timer();
+
+    for (uint64_t i = 0; i < size-1; i++) {
+        std::vector<double> x = create_householder_vector(A.get_minor_column(i), i);
+        householder_multiplication(A, b, x);
+
+//        auto U = create_reflection_matrix(x, i);
+//        A = matrix_multiplication(U, A);
+//        b = matvec_multiplication(U, b);
+
+//        A.print();
+    }
 
     double t1 = timer();
-
-    for (uint64_t i = 0; i < A.ncols-1; i++) {
-            std::vector<double> x = create_householder_vector(A.get_minor_column(i), i);
-            householder_multiplication(A, b, x);
-
-//            auto U = create_reflection_matrix(x, i);
-//            A = matrix_multiplication(U, A);
-//            b = matvec_multiplication(U, b);
-    }
 
     std::vector<double> x = solve_gauss(A, b);
 
     double t2 = timer();
 
-    std::cout << "Execution time: " << t2-t1 << std::endl;
-
-    print(x);
+    std::cout << "Hosehold time: " << t1-t0 << std::endl;
+    std::cout << "Gauss time: " << t2-t1 << std::endl;
+    std::cout << "Total time: " << t2-t0 << std::endl;
+    std::cout << "||Ax-b|| = " << get_discrepancy(A, x, b) << std::endl;
 
     return 0;
 }

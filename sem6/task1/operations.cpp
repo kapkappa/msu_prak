@@ -67,7 +67,7 @@ std::vector<double> create_householder_vector(const std::vector<double>& a, uint
     e[0] = a_norm;
 
     for (uint64_t i = 0; i < len; i++)
-        x.emplace_back(a[i] - sgn(a[0]) * e[i]);
+        x.emplace_back(a[i] + sgn(a[0]) * e[i]);
 
     double x_norm = get_norm(x);
     for (uint64_t i = 0; i < len; i++)
@@ -99,9 +99,9 @@ void householder_multiplication(dense_matrix& A, std::vector<double>& y, const s
     assert(A.ncols == A.nrows);
     assert(y.size() == A.ncols);
 
-    auto fullsize = A.ncols;
-    auto size = x.size();
-    auto shift = fullsize - size;
+    uint64_t fullsize = A.ncols;
+    uint64_t size = x.size();
+    uint64_t shift = fullsize - size;
 
     std::vector<double> tmp_vec(size, 0.0);
 
@@ -172,4 +172,16 @@ std::vector<double> generate_vector(const dense_matrix& A, uint64_t size) {
         x.push_back(sum);
     }
     return x;
+}
+
+double get_discrepancy(const dense_matrix& A, const std::vector<double>& x, const std::vector<double>& b) {
+    assert(A.ncols == x.size());
+    assert(A.nrows == b.size());
+    //||Ax-b||
+
+    std::vector<double> difference = matvec_multiplication(A, x);
+    for (uint64_t i = 0; i < difference.size(); i++)
+        difference[i] -= b[i];
+
+    return get_norm(difference);
 }
