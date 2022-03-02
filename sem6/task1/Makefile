@@ -1,5 +1,6 @@
 CXX = g++
-CXXFLAGS = -std=c++17
+#CXXFLAGS = -std=c++17 - on polus gcc -v 4 only
+CXXFLAGS = -std=c++11
 BUILD ?= Debug
 
 ifeq ($(BUILD), Release)
