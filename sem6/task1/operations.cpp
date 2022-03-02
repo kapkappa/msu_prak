@@ -61,20 +61,13 @@ std::vector<double> create_householder_vector(const std::vector<double>& a, uint
     uint64_t len = a.size();
     std::vector<double> x;
 
-    std::cout << "a vec: " << std::endl;
-    print(a);
     double a_norm = get_norm(a);
-    std::cout << "a norm: " << a_norm << std::endl;
 
     std::vector<double> e(len, 0.0);
     e[0] = a_norm;
-    std::cout << "e vec: " << std::endl;
-    print(e);
 
     for (uint64_t i = 0; i < len; i++)
         x.emplace_back(a[i] - sgn(a[0]) * e[i]);
-
-    print(x);
 
     double x_norm = get_norm(x);
     for (uint64_t i = 0; i < len; i++)

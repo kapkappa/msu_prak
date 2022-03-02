@@ -25,8 +25,12 @@ void dense_matrix::generate() {
 //    std::normal_distribution<> dis(0, 1000);
     std::binomial_distribution<> dis(1000, 0.5);
     val.resize(0);
-    for (uint64_t i = 0; i < nonzeros; i++)
-        val.push_back(dis(gen));
+    for (uint64_t i = 0; i < nrows; i++) {
+        for (uint64_t j = 0; j < ncols; j++) {
+            val.push_back(dis(gen));
+//            val.push_back((i+j)/2);
+        }
+    }
     std::cout << "Generation completed\n";
     if_empty = false;
 }
