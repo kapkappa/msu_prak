@@ -1,11 +1,15 @@
 #include "dense_matrix.h"
 #include "operations.h"
 
+#include "omp.h"
+
 #include <iostream>
 #include <cmath>
 #include <cassert>
 #include <vector>
 #include <cstdint>
+
+int nthreads = 1;
 
 dense_matrix matrix_multiplication(const dense_matrix& A, const dense_matrix& B) {
     assert(A.ncols == B.nrows);
@@ -103,9 +107,15 @@ void householder_multiplication(dense_matrix& A, std::vector<double>& y, const s
     uint64_t size = x.size();
     uint64_t shift = fullsize - size;
 
+    nthreads = omp_get_max_threads();
+    omp_set_num_threads(nthreads);
+
+#pragma omp parallel shared(A, x, y, nthreads)
+{
     std::vector<double> tmp_vec(size, 0.0);
 
-    for (uint64_t col = shift; col < fullsize; col++) {
+    int id = omp_get_thread_num();
+    for (uint64_t col = shift + id; col < fullsize; col += nthreads) {
         for (uint64_t row = shift; row < fullsize; row++) {
             double sum = 0.0;
             for (uint64_t k = shift; k < fullsize; k++)
@@ -119,7 +129,7 @@ void householder_multiplication(dense_matrix& A, std::vector<double>& y, const s
             A.val[j * A.ncols + col] = tmp_vec[j - shift];
     }
 
-    for (uint64_t i = shift; i < fullsize; i++) {
+    for (uint64_t i = shift + id; i < fullsize; i += nthreads) {
         double sum = 0;
         for (uint64_t j = shift; j < fullsize; j++) {
             if (i != j)
@@ -129,8 +139,9 @@ void householder_multiplication(dense_matrix& A, std::vector<double>& y, const s
         }
         tmp_vec[i-shift] = sum;
     }
-    for (uint64_t i = shift; i < fullsize; i++)
+    for (uint64_t i = shift + id; i < fullsize; i += nthreads)
         y[i] = tmp_vec[i-shift];
+}
 }
 
 void print(const std::vector<double>& x) {

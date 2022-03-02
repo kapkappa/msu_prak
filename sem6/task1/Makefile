@@ -1,6 +1,6 @@
 CXX = g++
 #CXXFLAGS = -std=c++17 - on polus gcc -v 4 only
-CXXFLAGS = -std=c++11
+CXXFLAGS = -std=c++11 -fopenmp
 BUILD ?= Debug
 
 ifeq ($(BUILD), Release)
@@ -13,8 +13,8 @@ endif
 
 all: clean prog
 
-prog: matrices.o operations.o main.o
-	$(CXX) dense_matrix.o operations.o main.o -o prog
+prog:
+	$(CXX) $(CXXFLAGS) dense_matrix.cpp operations.cpp main.cpp -o prog
 
 main.o:
 	$(CXX) $(CXXFLAGS) -c main.cpp
