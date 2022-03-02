@@ -10,21 +10,12 @@
 dense_matrix matrix_multiplication(const dense_matrix& A, const dense_matrix& B) {
     assert(A.ncols == B.nrows);
     dense_matrix C(A.nrows, B.ncols);
-/*
-    for (uint64_t i = 0; i < nrows; i++) {
-        for (uint64_t k = 0; k < nrows; k++) {
-            double r = A.val[i * nrows + k];
-            for (uint64_t j = 0; j < ncols; j++)
-                C.val[i * nrows + j] += r * B.val[k * nrows + j];
-        }
-    }
-*/
 
     for (uint64_t i = 0; i < A.nrows; i++) {
-        for (uint64_t j = 0; j < B.ncols; j++) {
-            C.val[i * C.ncols + j] = 0.0;
-            for (uint64_t k = 0; k < A.ncols; k++)
-                C.val[i * C.ncols + j] += A.val[i * A.ncols + k] * B.val[k * B.ncols + j];
+        for (uint64_t k = 0; k < B.nrows; k++) {
+            double r = A.val[i * A.nrows + k];
+            for (uint64_t j = 0; j < B.ncols; j++)
+                C.val[i * C.nrows + j] += r * B.val[k * B.nrows + j];
         }
     }
 
@@ -111,8 +102,81 @@ dense_matrix create_reflection_matrix(const std::vector<double>& x, uint64_t ind
     return U;
 }
 
+void householder_multiplication(dense_matrix& A, std::vector<double>& y, const std::vector<double>& x) {
+    assert(A.ncols == A.nrows);
+    assert(y.size() == A.ncols);
+
+    auto fullsize = A.ncols;
+    auto size = x.size();
+    auto shift = fullsize - size;
+
+    std::vector<double> tmp_vec(size, 0.0);
+
+    for (uint64_t col = shift; col < fullsize; col++) {
+        for (uint64_t row = shift; row < fullsize; row++) {
+            double sum = 0.0;
+            for (uint64_t k = shift; k < fullsize; k++)
+                if (row != k)
+                    sum += -2.0 * x[row-shift] * x[k-shift] * A.val[k * A.ncols + col];
+                else
+                    sum += (1.0 - 2.0 * x[row-shift] * x[k-shift]) * A.val[k * A.ncols + col];
+            tmp_vec[row-shift] = sum;
+        }
+        for (uint64_t j = shift; j < fullsize; j++)
+            A.val[j * A.ncols + col] = tmp_vec[j - shift];
+    }
+
+    for (uint64_t i = shift; i < fullsize; i++) {
+        double sum = 0;
+        for (uint64_t j = shift; j < fullsize; j++) {
+            if (i != j)
+                sum += -2.0 * x[i-shift] * x[j-shift] * y[j];
+            else
+                sum += (1.0 - 2.0 * x[i-shift] * x[j-shift]) * y[j];
+        }
+        tmp_vec[i-shift] = sum;
+    }
+    for (uint64_t i = shift; i < fullsize; i++)
+        y[i] = tmp_vec[i-shift];
+}
+
 void print(const std::vector<double>& x) {
     for (const auto& it : x)
         std::cout << it << " ";
     std::cout << std::endl;
+}
+
+std::vector<double> solve_gauss(const dense_matrix& A, const std::vector<double>& y) {
+    assert(A.ncols == y.size());
+    assert(A.ncols == A.nrows);
+    uint64_t size = y.size();
+    std::vector<double> x(size, 0.0);
+    for (int64_t i = size-1; i >= 0; i--) {
+        double sum = 0.0;
+        for (uint64_t j = i; j < size; j++) {
+            sum += x[j] * A.val[i * size + j];
+        }
+        x[i] = (y[i] - sum) / A.val[i * size + i];
+    }
+    return x;
+}
+
+std::vector<double> generate_vector(uint64_t size) {
+    std::vector<double> x;
+    for (uint64_t i = 0; i < size; i++)
+        x.push_back(1);
+    return x;
+}
+
+std::vector<double> generate_vector(const dense_matrix& A, uint64_t size) {
+    assert(A.nrows == size);
+
+    std::vector<double> x;
+    for (uint64_t i = 0; i < size; i++) {
+        double sum = 0.0;
+        for (uint64_t j = 0; j < A.ncols; j++)
+            sum += A.val[i * size + j];
+        x.push_back(sum);
+    }
+    return x;
 }

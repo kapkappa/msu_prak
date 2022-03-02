@@ -11,3 +11,10 @@ dense_matrix create_reflection_matrix(const std::vector<double>&, uint64_t);
 std::vector<double> create_householder_vector(const std::vector<double>&, uint64_t);
 
 void print(const std::vector<double> &);
+
+std::vector<double> solve_gauss(const dense_matrix&, const std::vector<double>&);
+
+std::vector<double> generate_vector(uint64_t);
+std::vector<double> generate_vector(const dense_matrix&, uint64_t);
+
+void householder_multiplication(dense_matrix&, std::vector<double>&, const std::vector<double>&);
