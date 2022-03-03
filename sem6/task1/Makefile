@@ -1,10 +1,11 @@
 CXX = g++
 #CXXFLAGS = -std=c++17 - on polus gcc -v 4 only
 CXXFLAGS = -std=c++11 -fopenmp
+XLCFLAGS = -qsmp=omp
 BUILD ?= Debug
 
 ifeq ($(BUILD), Release)
-CXXFLAGS += -O3 -DNDEBUG
+CXXFLAGS += -O3 -DNDEBUG -ffast-math -funroll-loops -ftree-vectorize
 endif
 
 ifeq ($(BUILD), Debug)

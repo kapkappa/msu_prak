@@ -18,7 +18,7 @@ int main(int argc, char** argv) {
 
     std::cout << "Threads number: " << omp_get_max_threads() << std::endl;
 
-    uint64_t size;
+    uint32_t size;
     if (argc == 1)
         size = 10;
     else
@@ -33,13 +33,9 @@ int main(int argc, char** argv) {
 
     double t0 = timer();
 
-    for (uint64_t i = 0; i < size-1; i++) {
+    for (uint32_t i = 0; i < size-1; i++) {
         std::vector<double> x = create_householder_vector(A.get_minor_column(i), i);
         householder_multiplication(A, b, x);
-
-//        auto U = create_reflection_matrix(x, i);
-//        A = matrix_multiplication(U, A);
-//        b = matvec_multiplication(U, b);
 
 //        A.print();
     }
