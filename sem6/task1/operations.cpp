@@ -115,28 +115,19 @@ void householder_multiplication(dense_matrix& A, std::vector<double>& y, const s
     int id = omp_get_thread_num();
 
     for (uint32_t col = shift + id; col < fullsize; col += nthreads) {
-        std::vector<double> tmp_vec = A.get_column(col, shift);
-        for (uint32_t row = 0; row < size; row++) {
-            double sum = 0.0;
-            for (uint32_t k = 0; k < size; k++)
-                if (row != k)
-                    sum += -2.0 * x[row] * x[k] * tmp_vec[k];
-                else
-                    sum += (1.0 - 2.0 * x[row] * x[k]) * tmp_vec[k];
-            A.val[(row+shift) * A.ncols + col] = sum;
-        }
+        double sum = 0.0;
+        for (uint32_t k = 0; k < size; k++)
+            sum += 2.0 * x[k] * A.val[(k+shift) * fullsize + col];
+        for (uint32_t k = 0; k < size; k++)
+            A.val[(k+shift) * fullsize + col] -= sum * x[k];
     }
 
-    std::vector<double> tmp_vec = y;
     for (uint32_t i = shift + id; i < fullsize; i += nthreads) {
-        double sum = 0;
-        for (uint32_t j = shift; j < fullsize; j++) {
-            if (i != j)
-                sum += -2.0 * x[i-shift] * x[j-shift] * tmp_vec[j];
-            else
-                sum += (1.0 - 2.0 * x[i-shift] * x[j-shift]) * tmp_vec[j];
-        }
-        y[i] = sum;
+        double sum = 0.0;
+        for (uint32_t j = 0; j < size; j++)
+            sum += 2.0 * x[j] * y[j+shift];
+        for (uint32_t j = 0; j < size; j++)
+            y[j+shift] -= sum * x[j];
     }
 }
 }
