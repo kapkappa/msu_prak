@@ -1,6 +1,8 @@
 #include "dense_matrix.h"
 #include "operations.h"
 
+#include "omp.h"
+
 #include <sys/time.h>
 #include <iostream>
 
@@ -13,6 +15,9 @@ static inline double timer() {
 }
 
 int main(int argc, char** argv) {
+
+    std::cout << "Threads number: " << omp_get_max_threads() << std::endl;
+
     uint64_t size;
     if (argc == 1)
         size = 10;

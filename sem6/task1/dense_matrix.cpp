@@ -39,7 +39,17 @@ std::vector<double> dense_matrix::get_column(uint64_t index) const {
     assert(index < ncols);
     std::vector<double>column;
     for (uint64_t i = 0; i < nrows; i++)
-        column.emplace_back(val[i * nrows + index]);
+        column.push_back(val[i * nrows + index]);
+
+    return column;
+}
+
+std::vector<double> dense_matrix::get_column(uint64_t col, uint64_t row) const {
+    assert(col < ncols);
+    assert(row < nrows);
+    std::vector<double> column;
+    for (uint64_t i = row; i < nrows; i++)
+        column.push_back(val[i * nrows + col]);
 
     return column;
 }

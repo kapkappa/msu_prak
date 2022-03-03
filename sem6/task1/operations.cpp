@@ -112,35 +112,32 @@ void householder_multiplication(dense_matrix& A, std::vector<double>& y, const s
 
 #pragma omp parallel shared(A, x, y, nthreads)
 {
-    std::vector<double> tmp_vec(size, 0.0);
-
     int id = omp_get_thread_num();
+
     for (uint64_t col = shift + id; col < fullsize; col += nthreads) {
+        std::vector<double> tmp_vec = A.get_column(col, shift);
         for (uint64_t row = shift; row < fullsize; row++) {
             double sum = 0.0;
             for (uint64_t k = shift; k < fullsize; k++)
                 if (row != k)
-                    sum += -2.0 * x[row-shift] * x[k-shift] * A.val[k * A.ncols + col];
+                    sum += -2.0 * x[row-shift] * x[k-shift] * tmp_vec[k-shift];
                 else
-                    sum += (1.0 - 2.0 * x[row-shift] * x[k-shift]) * A.val[k * A.ncols + col];
-            tmp_vec[row-shift] = sum;
+                    sum += (1.0 - 2.0 * x[row-shift] * x[k-shift]) * tmp_vec[k-shift];
+            A.val[row * A.ncols + col] = sum;
         }
-        for (uint64_t j = shift; j < fullsize; j++)
-            A.val[j * A.ncols + col] = tmp_vec[j - shift];
     }
 
+    std::vector<double> tmp_vec = y;
     for (uint64_t i = shift + id; i < fullsize; i += nthreads) {
         double sum = 0;
         for (uint64_t j = shift; j < fullsize; j++) {
             if (i != j)
-                sum += -2.0 * x[i-shift] * x[j-shift] * y[j];
+                sum += -2.0 * x[i-shift] * x[j-shift] * tmp_vec[j];
             else
-                sum += (1.0 - 2.0 * x[i-shift] * x[j-shift]) * y[j];
+                sum += (1.0 - 2.0 * x[i-shift] * x[j-shift]) * tmp_vec[j];
         }
-        tmp_vec[i-shift] = sum;
+        y[i] = sum;
     }
-    for (uint64_t i = shift + id; i < fullsize; i += nthreads)
-        y[i] = tmp_vec[i-shift];
 }
 }
 

@@ -23,5 +23,6 @@ public:
     void print() const;
     void generate();
     std::vector<double> get_column(uint64_t ) const;
+    std::vector<double> get_column(uint64_t, uint64_t ) const;
     std::vector<double> get_minor_column(uint64_t ) const;
 };
