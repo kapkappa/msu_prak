@@ -34,7 +34,7 @@ int main(int argc, char** argv) {
     double t0 = timer();
 
     for (uint32_t i = 0; i < size-1; i++) {
-        std::vector<double> x = create_householder_vector(A.get_minor_column(i), i);
+        std::vector<double> x = create_householder_vector(A.get_minor_column(i));
         householder_multiplication(A, b, x);
 
 //        A.print();

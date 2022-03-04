@@ -61,19 +61,19 @@ double sgn(double x) {
     return 0.0;
 }
 
-std::vector<double> create_householder_vector(const std::vector<double>& a, uint32_t index) {
+std::vector<double> create_householder_vector(const std::vector<double>& a) {
     uint32_t len = a.size();
-    std::vector<double> x;
+    std::vector<double> x(len, 0.0);
 
-    double a_norm = get_norm(a);
-
-    std::vector<double> e(len, 0.0);
-    e[0] = a_norm;
-
+#pragma omp parallel for shared(x, a)
     for (uint32_t i = 0; i < len; i++)
-        x.emplace_back(a[i] + sgn(a[0]) * e[i]);
+        x[i] = a[i];
+
+    x[0] += sgn(a[0]) * get_norm(a);
 
     double x_norm = get_norm(x);
+
+#pragma omp parallel for shared(x)
     for (uint32_t i = 0; i < len; i++)
         x[i] /= x_norm;
 

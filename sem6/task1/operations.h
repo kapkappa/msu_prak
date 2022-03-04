@@ -8,7 +8,7 @@ double get_norm (const std::vector<double>&);
 
 dense_matrix create_reflection_matrix(const std::vector<double>&, uint32_t);
 
-std::vector<double> create_householder_vector(const std::vector<double>&, uint32_t);
+std::vector<double> create_householder_vector(const std::vector<double>& );
 
 void print(const std::vector<double> &);
 
