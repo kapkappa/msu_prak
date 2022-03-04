@@ -110,7 +110,7 @@ void householder_multiplication(dense_matrix& A, std::vector<double>& y, const s
     nthreads = omp_get_max_threads();
     omp_set_num_threads(nthreads);
 
-#pragma omp parallel shared(A, x, y, nthreads)
+#pragma omp parallel shared(A, y, x, nthreads)
 {
     int id = omp_get_thread_num();
 
@@ -121,15 +121,15 @@ void householder_multiplication(dense_matrix& A, std::vector<double>& y, const s
         for (uint32_t k = 0; k < size; k++)
             A.val[(k+shift) * fullsize + col] -= sum * x[k];
     }
+}
 
-    for (uint32_t i = shift + id; i < fullsize; i += nthreads) {
+    for (uint32_t i = shift; i < fullsize; i++) {
         double sum = 0.0;
         for (uint32_t j = 0; j < size; j++)
             sum += 2.0 * x[j] * y[j+shift];
         for (uint32_t j = 0; j < size; j++)
             y[j+shift] -= sum * x[j];
     }
-}
 }
 
 void print(const std::vector<double>& x) {
