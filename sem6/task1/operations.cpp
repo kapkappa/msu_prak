@@ -110,18 +110,14 @@ void householder_multiplication(dense_matrix& A, std::vector<double>& y, const s
     nthreads = omp_get_max_threads();
     omp_set_num_threads(nthreads);
 
-#pragma omp parallel shared(A, y, x, nthreads)
-{
-    int id = omp_get_thread_num();
-
-    for (uint32_t col = shift + id; col < fullsize; col += nthreads) {
+#pragma omp parallel for shared(A, x) schedule(static)
+    for (uint32_t col = shift; col < fullsize; col++) {
         double sum = 0.0;
         for (uint32_t k = 0; k < size; k++)
             sum += 2.0 * x[k] * A.val[(k+shift) * fullsize + col];
         for (uint32_t k = 0; k < size; k++)
             A.val[(k+shift) * fullsize + col] -= sum * x[k];
     }
-}
 
     for (uint32_t i = shift; i < fullsize; i++) {
         double sum = 0.0;
@@ -143,11 +139,12 @@ std::vector<double> solve_gauss(const dense_matrix& A, const std::vector<double>
     assert(A.ncols == A.nrows);
     uint32_t size = y.size();
     std::vector<double> x(size, 0.0);
-    for (int64_t i = size-1; i >= 0; i--) {
+    for (int32_t i = size-1; i >= 0; i--) {
         double sum = 0.0;
-        for (uint32_t j = i; j < size; j++) {
+        #pragma omp parallel for shared(A, x) reduction(+:sum)
+        for (uint32_t j = i+1; j < size; j++)
             sum += x[j] * A.val[i * size + j];
-        }
+
         x[i] = (y[i] - sum) / A.val[i * size + i];
     }
     return x;
