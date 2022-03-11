@@ -14,8 +14,19 @@ static inline double timer() {
     return ((double)tp.tv_sec + (double)tp.tv_usec * 1.e-6);
 }
 
-int main(int argc, char** argv) {
+static inline double sgn(double x) {
+    if (x > 0)
+        return 1.0;
+    if (x < 0)
+        return -1.0;
+    return 0.0;
+}
 
+int nthreads = 1;
+
+int main(int argc, char** argv) {
+    nthreads = omp_get_max_threads();
+    omp_set_num_threads(nthreads);
     std::cout << "Threads number: " << omp_get_max_threads() << std::endl;
 
     uint32_t size;
@@ -27,17 +38,49 @@ int main(int argc, char** argv) {
     dense_matrix A(size, size);
     A.generate();
 
-//    A.print();
-
     std::vector<double> b = generate_vector(A, size);
+    uint32_t nrows = A.nrows, ncols = A.ncols;
 
     double t0 = timer();
 
     for (uint32_t i = 0; i < size-1; i++) {
-        std::vector<double> x = create_householder_vector(A.get_minor_column(i));
-        householder_multiplication(A, b, x);
+/////// CREATING HAUSEHOLDER VECTOR X
+        uint32_t len = nrows - i;
+        std::vector<double> x(len, 0.0);
 
-//        A.print();
+#pragma omp parallel for shared(x)
+        for (uint32_t j = i; j < nrows; j++)
+            x[j-i] = A.val[j * nrows + i];
+
+        x[0] += sgn(x[0]) * get_norm(x);
+
+        double x_norm = get_norm(x);
+
+#pragma omp parallel for shared(x)
+        for (uint32_t j = 0; j < len; j++)
+            x[j] /= x_norm;
+
+//////  HAUSEHOLDER RELAXATION
+        uint32_t fullsize = ncols;
+        uint32_t shift = fullsize - len;
+
+#pragma omp parallel for shared(A, x) schedule(static)
+        for (uint32_t col = shift; col < fullsize; col++) {
+            double sum = 0.0;
+            for (uint32_t k = 0; k < len; k++)
+                sum += 2.0 * x[k] * A.val[(k+shift) * fullsize + col];
+            for (uint32_t k = 0; k < len; k++)
+                A.val[(k+shift) * fullsize + col] -= sum * x[k];
+        }
+
+        for (uint32_t k = shift; k < fullsize; k++) {
+            double sum = 0.0;
+            for (uint32_t j = 0; j < size; j++)
+                sum += 2.0 * x[j] * b[j+shift];
+            for (uint32_t j = 0; j < size; j++)
+                b[j+shift] -= sum * x[j];
+        }
+
     }
 
     double t1 = timer();

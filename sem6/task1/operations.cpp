@@ -9,8 +9,6 @@
 #include <vector>
 #include <cstdint>
 
-int nthreads = 1;
-
 dense_matrix matrix_multiplication(const dense_matrix& A, const dense_matrix& B) {
     assert(A.ncols == B.nrows);
     dense_matrix C(A.nrows, B.ncols);
@@ -65,6 +63,9 @@ std::vector<double> create_householder_vector(const std::vector<double>& a) {
     uint32_t len = a.size();
     std::vector<double> x(len, 0.0);
 
+    int nthreads = omp_get_max_threads();
+    omp_set_num_threads(nthreads);
+
 #pragma omp parallel for shared(x, a)
     for (uint32_t i = 0; i < len; i++)
         x[i] = a[i];
@@ -107,7 +108,7 @@ void householder_multiplication(dense_matrix& A, std::vector<double>& y, const s
     uint32_t size = x.size();
     uint32_t shift = fullsize - size;
 
-    nthreads = omp_get_max_threads();
+    int nthreads = omp_get_max_threads();
     omp_set_num_threads(nthreads);
 
 #pragma omp parallel for shared(A, x) schedule(static)
@@ -137,6 +138,10 @@ void print(const std::vector<double>& x) {
 std::vector<double> solve_gauss(const dense_matrix& A, const std::vector<double>& y) {
     assert(A.ncols == y.size());
     assert(A.ncols == A.nrows);
+
+    int nthreads = omp_get_max_threads();
+    omp_set_num_threads(nthreads);
+
     uint32_t size = y.size();
     std::vector<double> x(size, 0.0);
     for (int32_t i = size-1; i >= 0; i--) {
