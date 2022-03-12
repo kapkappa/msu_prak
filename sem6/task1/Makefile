@@ -1,15 +1,22 @@
 CXX = g++
-#CXXFLAGS = -std=c++17 - on polus gcc -v 4 only
-CXXFLAGS = -std=c++11 -fopenmp
-XLCFLAGS = -qsmp=omp
+CXXFLAGS = -std=c++17 -fopenmp
+XLCFLAGS = -std=c++11 -qsmp=omp
 BUILD ?= Debug
+MACHINE ?= Desktop
 
 ifeq ($(BUILD), Release)
 CXXFLAGS += -O3 -DNDEBUG -ffast-math -funroll-loops -ftree-vectorize
+XLCFLAGS += -O5 -DNDEBUG
 endif
 
 ifeq ($(BUILD), Debug)
 CXXFLAGS += -O0 -w
+XLCFLAGS += -O0 -w
+endif
+
+ifeq ($(MACHINE), Polus)
+CXXFLAGS = $(XLCFLAGS)
+CXX = xlc++
 endif
 
 all: clean prog
@@ -17,14 +24,5 @@ all: clean prog
 prog:
 	$(CXX) $(CXXFLAGS) dense_matrix.cpp operations.cpp main.cpp -o prog
 
-main.o:
-	$(CXX) $(CXXFLAGS) -c main.cpp
-
-operations.o:
-	$(CXX) $(CXXFLAGS) -c operations.cpp
-
-matrices.o:
-	$(CXX) $(CXXFLAGS) -c dense_matrix.cpp
-
 clean:
-	rm -rf prog a.out *.o
+	rm -rf prog

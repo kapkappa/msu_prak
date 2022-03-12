@@ -9,6 +9,25 @@
 #include <vector>
 #include <cstdint>
 
+namespace {
+
+double get_norm(const std::vector<double>& x) {
+    double res = 0.0;
+    for (const auto& it : x)
+        res += it * it;
+    return std::sqrt(res);
+}
+
+double sgn(double x) {
+    if (x > 0)
+        return 1.0;
+    if (x < 0)
+        return -1.0;
+    return 0.0;
+}
+
+}
+
 dense_matrix matrix_multiplication(const dense_matrix& A, const dense_matrix& B) {
     assert(A.ncols == B.nrows);
     dense_matrix C(A.nrows, B.ncols);
@@ -42,21 +61,6 @@ std::vector<double> matvec_multiplication(const dense_matrix& A, const std::vect
     }
 
     return x;
-}
-
-double get_norm(const std::vector<double>& x) {
-    double res = 0.0;
-    for (const auto& it : x)
-        res += it * it;
-    return std::sqrt(res);
-}
-
-double sgn(double x) {
-    if (x > 0)
-        return 1.0;
-    if (x < 0)
-        return -1.0;
-    return 0.0;
 }
 
 std::vector<double> create_householder_vector(const std::vector<double>& a) {

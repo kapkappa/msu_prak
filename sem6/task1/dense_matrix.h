@@ -5,15 +5,11 @@
 
 struct dense_matrix {
 public:
-
     std::vector<double> val;
 
     bool if_empty = true;
     uint32_t nrows = 0, ncols = 0;
     uint32_t nonzeros = 0;
-
-//    ~dense_matrix;
-//    allocate
 
     dense_matrix(uint32_t _nrows, uint32_t _ncols) : nrows(_nrows), ncols(_ncols) {
         nonzeros = nrows * ncols;

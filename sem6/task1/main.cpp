@@ -5,6 +5,7 @@
 
 #include <sys/time.h>
 #include <iostream>
+#include <cmath>
 
 static inline double timer() {
     struct timeval tp;
@@ -20,6 +21,13 @@ static inline double sgn(double x) {
     if (x < 0)
         return -1.0;
     return 0.0;
+}
+
+static inline double get_norm(const std::vector<double>& x) {
+    double res = 0.0;
+    for (const auto& it : x)
+        res += it * it;
+    return std::sqrt(res);
 }
 
 int nthreads = 1;
