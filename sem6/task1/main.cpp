@@ -48,7 +48,7 @@ int main(int argc, char** argv) {
         uint32_t len = nrows - i;
         std::vector<double> x(len, 0.0);
 
-#pragma omp parallel for shared(x)
+#pragma omp parallel for shared(A, x)
         for (uint32_t j = i; j < nrows; j++)
             x[j-i] = A.val[j * nrows + i];
 
