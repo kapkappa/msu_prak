@@ -60,7 +60,7 @@ int main(int argc, char** argv) {
         for (uint32_t j = 0; j < len; j++)
             x[j] /= x_norm;
 
-//////  HAUSEHOLDER RELAXATION
+//////  HAUSEHOLDER DECOMPOSITION
         uint32_t fullsize = ncols;
         uint32_t shift = fullsize - len;
 
@@ -75,9 +75,9 @@ int main(int argc, char** argv) {
 
         for (uint32_t k = shift; k < fullsize; k++) {
             double sum = 0.0;
-            for (uint32_t j = 0; j < size; j++)
+            for (uint32_t j = 0; j < len; j++)
                 sum += 2.0 * x[j] * b[j+shift];
-            for (uint32_t j = 0; j < size; j++)
+            for (uint32_t j = 0; j < len; j++)
                 b[j+shift] -= sum * x[j];
         }
 
