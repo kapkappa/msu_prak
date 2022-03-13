@@ -150,7 +150,7 @@ std::vector<double> solve_gauss(const dense_matrix& A, const std::vector<double>
     std::vector<double> x(size, 0.0);
     for (int32_t i = size-1; i >= 0; i--) {
         double sum = 0.0;
-        #pragma omp parallel for shared(A, x) reduction(+:sum)
+#pragma omp parallel for shared(A, x) reduction(+:sum)
         for (uint32_t j = i+1; j < size; j++)
             sum += x[j] * A.val[i * size + j];
 
