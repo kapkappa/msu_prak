@@ -18,3 +18,5 @@ std::vector<double> generate_vector(const dense_matrix&, uint32_t);
 void householder_multiplication(dense_matrix&, std::vector<double>&, const std::vector<double>&);
 
 double get_discrepancy(const dense_matrix&, const std::vector<double>&, const std::vector<double>&);
+
+double get_manhattan_norm(const std::vector<double>& );

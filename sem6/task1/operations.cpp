@@ -190,3 +190,10 @@ double get_discrepancy(const dense_matrix& A, const std::vector<double>& x, cons
 
     return get_norm(difference);
 }
+
+double get_manhattan_norm(const std::vector<double>& x) {
+    double sum = 0.0;
+    for (const auto& it : x)
+        sum += it;
+    return sum;
+}
