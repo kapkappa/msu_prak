@@ -28,7 +28,8 @@ void dense_matrix::generate() {
     val.resize(0);
     for (uint32_t i = 0; i < nrows; i++) {
         for (uint32_t j = 0; j < ncols; j++) {
-            val.push_back(dis(gen));
+//            val.push_back(dis(gen));
+            val.push_back((i+1)/(j+1)+10);
         }
     }
     std::cout << "Generation completed\n";

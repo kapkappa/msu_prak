@@ -197,3 +197,9 @@ double get_manhattan_norm(const std::vector<double>& x) {
         sum += it;
     return sum;
 }
+
+double get_error_norm(std::vector<double> x) {
+    for (auto& it : x)
+        it -= 1;
+    return get_norm(x);
+}

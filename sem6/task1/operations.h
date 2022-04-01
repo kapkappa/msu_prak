@@ -20,3 +20,5 @@ void householder_multiplication(dense_matrix&, std::vector<double>&, const std::
 double get_discrepancy(const dense_matrix&, const std::vector<double>&, const std::vector<double>&);
 
 double get_manhattan_norm(const std::vector<double>& );
+
+double get_error_norm(std::vector<double>);

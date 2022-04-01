@@ -95,7 +95,7 @@ int main(int argc, char** argv) {
     std::cout << "Hosehold time: " << t1-t0 << std::endl;
     std::cout << "Gauss time: " << t2-t1 << std::endl;
     std::cout << "Total time: " << t2-t0 << std::endl;
-    std::cout << "X manhattan norm: " << get_manhattan_norm(x) << std::endl;
+    std::cout << "Error norm: " << get_error_norm(x) << std::endl;
     std::cout << "||Ax-b|| = " << get_discrepancy(A, x, b) << std::endl;
 
     return 0;
