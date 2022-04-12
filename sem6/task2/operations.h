@@ -22,3 +22,5 @@ double get_discrepancy(const dense_matrix&, const std::vector<double>&, const st
 double get_manhattan_norm(const std::vector<double>& );
 
 double get_error_norm(std::vector<double>);
+double get_error_norm(double *, uint32_t);
+double get_norm(double *, uint32_t);

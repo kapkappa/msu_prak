@@ -26,26 +26,6 @@ static inline double sgn(double x) {
     return 0.0;
 }
 
-static inline double get_norm(const std::vector<double>& x) {
-    double res = 0.0;
-    for (const auto& it : x)
-        res += it * it;
-    return std::sqrt(res);
-}
-
-static inline double get_norm(double * x, uint32_t len) {
-    double res = 0.0;
-    for (uint32_t i = 0; i < len; i++)
-        res += x[i] * x[i];
-    return std::sqrt(res);
-}
-
-static inline double get_error_norm(double * x, uint32_t len) {
-    for (uint32_t i = 0; i < len; i++)
-        x[i] -= 1;
-    return get_norm(x, len);
-}
-
 int main(int argc, char** argv) {
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);

@@ -23,10 +23,10 @@ static inline double sgn(double x) {
     return 0.0;
 }
 
-static inline double get_norm(const std::vector<double>& x) {
+static inline double get_norm(const std::vector<double>& x, uint32_t len) {
     double res = 0.0;
-    for (const auto& it : x)
-        res += it * it;
+    for (uint32_t it = 0; it < len; it++)
+        res += x[it] * x[it];
     return std::sqrt(res);
 }
 
@@ -47,43 +47,43 @@ int main(int argc, char** argv) {
     A.generate();
 
     std::vector<double> b = generate_vector(A, size);
+    std::vector<double> hh(size, 0.0);
 
     uint32_t nrows = A.nrows, ncols = A.ncols;
 
     double t0 = timer();
 
     for (uint32_t i = 0; i < size-1; i++) {
-/////// CREATING HAUSEHOLDER VECTOR X
+/////// CREATING HAUSEHOLDER VECTOR hh
         uint32_t len = nrows - i;
-        std::vector<double> x(len, 0.0);
 
-#pragma omp parallel for shared(A, x)
+#pragma omp parallel for shared(A, hh)
         for (uint32_t j = i; j < nrows; j++)
-            x[j-i] = A.val[j * ncols + i];
+            hh[j-i] = A.val[j * ncols + i];
 
-        double x_norm = get_norm(x);
-        x[0] += sgn(x[0]) * x_norm;
-        x_norm = get_norm(x);
+        double hh_norm = get_norm(hh, len);
+        hh[0] += sgn(hh[0]) * hh_norm;
+        hh_norm = get_norm(hh, len);
 
-#pragma omp parallel for shared(x)
+#pragma omp parallel for shared(hh)
         for (uint32_t j = 0; j < len; j++)
-            x[j] /= x_norm;
+            hh[j] /= hh_norm;
 
 //////  HAUSEHOLDER DECOMPOSITION
-#pragma omp parallel for shared(A, x) schedule(static)
+#pragma omp parallel for shared(A, hh) schedule(static)
         for (uint32_t col = i; col < ncols; col++) {
             double sum = 0.0;
             for (uint32_t k = 0; k < len; k++)
-                sum += 2.0 * x[k] * A.val[(k+i) * ncols + col];
+                sum += 2.0 * hh[k] * A.val[(k+i) * ncols + col];
             for (uint32_t k = 0; k < len; k++)
-                A.val[(k+i) * ncols + col] -= sum * x[k];
+                A.val[(k+i) * ncols + col] -= sum * hh[k];
         }
 
         double sum = 0.0;
         for (uint32_t j = 0; j < len; j++)
-            sum += 2.0 * x[j] * b[j+i];
+            sum += 2.0 * hh[j] * b[j+i];
         for (uint32_t j = 0; j < len; j++)
-            b[j+i] -= sum * x[j];
+            b[j+i] -= sum * hh[j];
     }
 
     double t1 = timer();

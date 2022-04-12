@@ -2,7 +2,6 @@
 #include "operations.h"
 
 #include "omp.h"
-#include <mpi.h>
 
 #include <iostream>
 #include <cmath>
@@ -203,3 +202,17 @@ double get_error_norm(std::vector<double> x) {
         it -= 1;
     return get_norm(x);
 }
+
+double get_norm(double * x, uint32_t len) {
+    double res = 0.0;
+    for (uint32_t i = 0; i < len; i++)
+        res += x[i] * x[i];
+    return std::sqrt(res);
+}
+
+double get_error_norm(double * x, uint32_t len) {
+    for (uint32_t i = 0; i < len; i++)
+        x[i] -= 1;
+    return get_norm(x, len);
+}
+
