@@ -47,6 +47,8 @@ int main(int argc, char** argv) {
     }
 
     double ** columns = (double **)malloc(columns_number * sizeof(double *));
+    double * x = (double *)calloc(size, sizeof(double));
+    double * x_global = (double *)calloc(size, sizeof(double));
 
     dense_matrix A(size, size);
 
@@ -117,27 +119,6 @@ int main(int argc, char** argv) {
     }
 
     double t1 = timer();
-/*
-    for (uint32_t i = 0; i < size; i++) {
-        if (rank == i % world_size) {
-            for (uint32_t j = 0; j < size; j++)
-                std::cout << columns[i / world_size][j] << ' ';
-            std::cout << std::endl;
-        }
-        MPI_Barrier(MPI_COMM_WORLD);
-    }
-
-    for (uint32_t i = 0; i < columns_number; i++)
-        MPI_Gather(columns[i], size, MPI_DOUBLE, A.val + i * world_size * size, size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-
-if (rank == 0) {
-//    A.transpose();
-    A.print();
-    print(b);
-}
-*/
-    double * x = (double *)calloc(size, sizeof(double));
-    double * x_global = (double *)calloc(size, sizeof(double));
 
     for (int32_t i = size-1; i >= 0; i--) {
         double sum = 0.0, mul = 0.0;
@@ -173,26 +154,27 @@ if (rank == 0) {
 
     MPI_Allreduce(x, x_global, size, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
-/*
-    for (uint32_t t_rank = 0; t_rank < world_size; t_rank++) {
-        if (rank == t_rank) {
-            std::cout << "x local: ";
-            for (uint32_t i = 0; i < size; i++)
-                std::cout << x[i] << ' ';
-            std::cout << std::endl << "x global: ";
-            for (uint32_t i = 0; i < size; i++)
-                std::cout << x_global[i] << ' ';
-            std::cout << std::endl;
-        }
-    }
-*/
-
     double t2 = timer();
 
-    std::cout << "Hosehold time: " << t1-t0 << std::endl;
-    std::cout << "Gauss time: " << t2-t1 << std::endl;
-    std::cout << "Total time: " << t2-t0 << std::endl;
-    std::cout << "Error norm: " << get_error_norm(x_global, size) << std::endl;
+    for (uint32_t i = 0; i < size / world_size; i++)
+        MPI_Gather(columns[i], size, MPI_DOUBLE, A.val + i * world_size * size, size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+    for (uint32_t i = 1; i < disps; i++) {
+        if (rank == i)
+            MPI_Send(columns[columns_number-1], size, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
+        else if (rank == 0)
+            MPI_Recv(A.val + world_size * size * (size / world_size) + i * size, size, MPI_DOUBLE, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    }
+
+    if (rank == 0) {
+        A.transpose();
+
+        std::cout << "Hosehold time: " << t1-t0 << std::endl;
+        std::cout << "Gauss time: " << t2-t1 << std::endl;
+        std::cout << "Total time: " << t2-t0 << std::endl;
+        std::cout << "||Ax-b|| = " << get_discrepancy(A, x_global, b) << std::endl;
+        std::cout << "Error norm: " << get_error_norm(x_global, size) << std::endl;
+    }
 
     free(hh);
     free(x);

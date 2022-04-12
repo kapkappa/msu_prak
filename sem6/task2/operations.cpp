@@ -45,9 +45,7 @@ dense_matrix matrix_multiplication(const dense_matrix& A, const dense_matrix& B)
     return C;
 }
 
-std::vector<double> matvec_multiplication(const dense_matrix& A, const std::vector<double>& b) {
-    assert(A.ncols == b.size());
-
+std::vector<double> matvec_multiplication(const dense_matrix& A, double * b) {
     uint32_t nrows = A.nrows;
     uint32_t ncols = A.ncols;
 
@@ -178,8 +176,7 @@ std::vector<double> generate_vector(const dense_matrix& A, uint32_t size) {
     return x;
 }
 
-double get_discrepancy(const dense_matrix& A, const std::vector<double>& x, const std::vector<double>& b) {
-    assert(A.ncols == x.size());
+double get_discrepancy(const dense_matrix& A, double * x, const std::vector<double>& b) {
     assert(A.nrows == b.size());
     //||Ax-b||
 

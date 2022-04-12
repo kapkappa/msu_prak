@@ -1,5 +1,6 @@
 #include "dense_matrix.h"
 
+#include <iomanip>
 #include <cassert>
 #include <cstdint>
 #include <iostream>
@@ -13,7 +14,7 @@ void dense_matrix::print() const {
     for (uint32_t i = 0; i < nrows; i++) {
         std::cout << "row " << i << " : ";
         for (uint32_t j = 0; j < ncols; j++)
-            std::cout << val[i * nrows + j] << " ";
+            std::cout << std::setw(15) << val[i * nrows + j] << " ";
         std::cout << std::endl;
     }
 }
