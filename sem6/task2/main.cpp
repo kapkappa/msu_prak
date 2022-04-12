@@ -40,7 +40,11 @@ int main(int argc, char** argv) {
         size = atoi(argv[1]);
 
     uint32_t columns_number = size / world_size, disps = size % world_size;
-//    if (rank == 0) columns_number += disps;
+    for (uint32_t i = 0; i < disps; i++) {
+        if (rank == i) {
+            columns_number++;
+        }
+    }
 
     double ** columns = (double **)malloc(columns_number * sizeof(double *));
 
@@ -59,8 +63,15 @@ int main(int argc, char** argv) {
             columns[i] = (double *)malloc(size * sizeof(double));
     }
 
-    for (uint32_t i = 0; i < columns_number; i++)
+    for (uint32_t i = 0; i < size / world_size; i++)
         MPI_Scatter(A.val + i * world_size * size, size, MPI_DOUBLE, columns[i], size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+    for (uint32_t i = 1; i < disps; i++) {
+        if (rank == 0)
+            MPI_Send(A.val + size * world_size * (size / world_size) + i * size, size, MPI_DOUBLE, i, 0, MPI_COMM_WORLD);
+        else if (rank == i)
+            MPI_Recv(columns[columns_number-1], size, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    }
 
     double * hh = (double*)malloc(size * sizeof(double));
 

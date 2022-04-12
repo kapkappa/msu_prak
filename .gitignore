@@ -3,3 +3,4 @@ prog*
 *.o
 tmp
 a.out
+tex
