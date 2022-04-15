@@ -140,6 +140,12 @@ void print(const std::vector<double>& x) {
     std::cout << std::endl;
 }
 
+void print(double * x, uint32_t size) {
+    for (uint32_t i = 0; i < size; i++)
+        std::cout << x[i] << " ";
+    std::cout << std::endl;
+}
+
 std::vector<double> solve_gauss(const dense_matrix& A, const std::vector<double>& y) {
     assert(A.ncols == y.size());
     assert(A.ncols == A.nrows);
@@ -176,8 +182,18 @@ std::vector<double> generate_vector(const dense_matrix& A, uint32_t size) {
     return x;
 }
 
-double get_discrepancy(const dense_matrix& A, double * x, const std::vector<double>& b) {
-    assert(A.nrows == b.size());
+void generate_vector(const dense_matrix& A, double * b, uint32_t size) {
+    assert(A.nrows == size);
+
+    for (uint32_t i = 0; i < size; i++) {
+        double sum = 0.0;
+        for (uint32_t j = 0; j < A.ncols; j++)
+            sum += A.val[i * size + j];
+        b[i] = sum;
+    }
+}
+
+double get_discrepancy(const dense_matrix& A, double * x, double * b) {
     //||Ax-b||
 
     std::vector<double> difference = matvec_multiplication(A, x);

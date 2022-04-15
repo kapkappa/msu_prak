@@ -49,14 +49,15 @@ int main(int argc, char** argv) {
     double ** columns = (double **)malloc(columns_number * sizeof(double *));
     double * x = (double *)calloc(size, sizeof(double));
     double * x_global = (double *)calloc(size, sizeof(double));
+    double * b = (double *)calloc(size, sizeof(double));
+    double * b_local = nullptr;
+    if (rank == 0) b_local = (double *)calloc(size, sizeof(double));
 
     dense_matrix A(size, size);
 
-    std::vector<double> b;
-
     if (rank == 0) {
         A.generate();
-        b = generate_vector(A, size);
+        generate_vector(A, b, size);
         A.transpose();
         for (uint32_t i = 0; i < columns_number; i++)
             columns[i] = A.val + i * world_size * size;
@@ -73,6 +74,13 @@ int main(int argc, char** argv) {
             MPI_Send(A.val + size * world_size * (size / world_size) + i * size, size, MPI_DOUBLE, i, 0, MPI_COMM_WORLD);
         else if (rank == i)
             MPI_Recv(columns[columns_number-1], size, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    }
+
+    if (size % world_size != 0) {
+        if (rank == 0)
+            MPI_Send(b, size, MPI_DOUBLE, size % world_size, 0, MPI_COMM_WORLD);
+        else if (rank == size % world_size)
+            MPI_Recv(b, size, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     }
 
     double * hh = (double*)malloc(size * sizeof(double));
@@ -109,7 +117,7 @@ int main(int argc, char** argv) {
             }
         }
 
-        if (rank == 0) {
+        if (rank == size % world_size) {
             double sum = 0.0;
             for (uint32_t j = 0; j < len; j++)
                 sum += 2.0 * hh[j] * b[j+i];
@@ -120,35 +128,26 @@ int main(int argc, char** argv) {
 
     double t1 = timer();
 
-    for (int32_t i = size-1; i >= 0; i--) {
-        double sum = 0.0, mul = 0.0;
-
-        for (uint32_t j = i+1; j < size; j++) {
-            if (rank == i % world_size) {
-                if (rank == j % world_size) {
-                    sum += x[j] * columns[j / world_size][i];
-                } else {
-                    MPI_Recv(&mul, 1, MPI_DOUBLE, j % world_size, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                    sum += mul;
-                }
-            } else {
-                if (rank == j % world_size) {
-                    mul = x[j] * columns[j / world_size][i];
-                    MPI_Send(&mul, 1, MPI_DOUBLE, i % world_size, 0, MPI_COMM_WORLD);
-                }
-            }
-
+    if (size % world_size != 0) {
+        if (rank == size % world_size) {
+            MPI_Send(b, size, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
+        } else if (rank == 0) {
+            MPI_Recv(b_local, size, MPI_DOUBLE, size % world_size, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         }
+    } else if (rank == 0) {
+        for (uint32_t i = 0; i < size; i++)
+            b_local[i] = b[i];
+    }
 
-        if (rank != i % world_size && rank == 0) {
-            MPI_Send(&b[i], 1, MPI_DOUBLE, i % world_size, 0, MPI_COMM_WORLD);
-        } else if (rank == i % world_size) {
-            if (i % world_size != 0)
-                MPI_Recv(&mul, 1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-            else
-                mul = b[i];
-            sum = mul - sum;
-            x[i] = sum / columns[i / world_size][i];
+    for (int32_t i = size - 1; i >= 0; i--) {
+        if (rank == i % world_size) {
+            if (world_size > 1) MPI_Recv(b, size, MPI_DOUBLE, (i+1) % world_size, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            x[i] = b[i] / columns[i / world_size][i];
+            for (uint32_t j = 0; j <= i; j++)
+                b[j] -= x[i] * columns[i / world_size][j];
+
+        } else if (rank == (i+1) % world_size) {
+            if (world_size > 1) MPI_Send(b, size, MPI_DOUBLE, i % world_size, 0, MPI_COMM_WORLD);
         }
     }
 
@@ -172,7 +171,7 @@ int main(int argc, char** argv) {
         std::cout << "Hosehold time: " << t1-t0 << std::endl;
         std::cout << "Gauss time: " << t2-t1 << std::endl;
         std::cout << "Total time: " << t2-t0 << std::endl;
-        std::cout << "||Ax-b|| = " << get_discrepancy(A, x_global, b) << std::endl;
+        std::cout << "||Ax-b|| = " << get_discrepancy(A, x_global, b_local) << std::endl;
         std::cout << "Error norm: " << get_error_norm(x_global, size) << std::endl;
     }
 
@@ -183,9 +182,13 @@ int main(int argc, char** argv) {
     if (rank != 0) {
         for (uint32_t i = 0; i < columns_number; i++)
             free(columns[i]);
+    } else {
+        free(b_local);
     }
 
     free(columns);
+
+    free(b);
 
     MPI_Finalize();
 
