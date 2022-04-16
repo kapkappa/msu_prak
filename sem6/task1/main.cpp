@@ -12,7 +12,8 @@ static inline double timer() {
     struct timezone tzp;
 
     gettimeofday(&tp, &tzp);
-    return ((double)tp.tv_sec + (double)tp.tv_usec * 1.e-6);
+//    return ((double)tp.tv_sec + (double)tp.tv_usec * 1.e-6);
+    return omp_get_wtime();
 }
 
 static inline double sgn(double x) {
@@ -23,7 +24,7 @@ static inline double sgn(double x) {
     return 0.0;
 }
 
-static inline double get_norm(const std::vector<double>& x, uint32_t len) {
+static inline double get_norm(double * x, uint32_t len) {
     double res = 0.0;
     for (uint32_t it = 0; it < len; it++)
         res += x[it] * x[it];
@@ -46,8 +47,10 @@ int main(int argc, char** argv) {
     dense_matrix A(size, size);
     A.generate();
 
-    std::vector<double> b = generate_vector(A, size);
-    std::vector<double> hh(size, 0.0);
+    double * b = (double *)calloc(size, sizeof(double));
+    double * hh = (double *)calloc(size, sizeof(double));
+
+    generate_vector(A, b, size);
     std::vector<double> x(size, 0.0);
 
     uint32_t nrows = A.nrows, ncols = A.ncols;
@@ -58,7 +61,7 @@ int main(int argc, char** argv) {
 /////// CREATING HAUSEHOLDER VECTOR hh
         uint32_t len = nrows - i;
 
-#pragma omp parallel for shared(A, hh)
+#pragma omp parallel for
         for (uint32_t j = i; j < nrows; j++)
             hh[j-i] = A.val[j * ncols + i];
 
@@ -66,12 +69,12 @@ int main(int argc, char** argv) {
         hh[0] += sgn(hh[0]) * hh_norm;
         hh_norm = get_norm(hh, len);
 
-#pragma omp parallel for shared(hh)
+#pragma omp parallel for
         for (uint32_t j = 0; j < len; j++)
             hh[j] /= hh_norm;
 
 //////  HAUSEHOLDER DECOMPOSITION
-#pragma omp parallel for shared(A, hh) schedule(static)
+#pragma omp parallel for
         for (uint32_t col = i; col < ncols; col++) {
             double sum = 0.0;
             for (uint32_t k = 0; k < len; k++)
@@ -89,7 +92,9 @@ int main(int argc, char** argv) {
 
     double t1 = timer();
 
-    std::vector<double> b_local = b;
+    std::vector<double> b_local(size, 0.0);
+    for (uint32_t i = 0; i < size; i++)
+        b_local[i] = b[i];
 
     for (int32_t i = size-1; i >= 0; i--) {
         for (uint32_t j = i+1; j < size; j++)
