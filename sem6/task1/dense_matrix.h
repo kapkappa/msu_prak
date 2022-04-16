@@ -1,11 +1,12 @@
 #pragma once
 
 #include <vector>
+#include <stdlib.h>
 #include <cstdint>
 
 struct dense_matrix {
 public:
-    std::vector<double> val;
+    double * val = nullptr;
 
     bool if_empty = true;
     uint32_t nrows = 0, ncols = 0;
@@ -13,7 +14,11 @@ public:
 
     dense_matrix(uint32_t _nrows, uint32_t _ncols) : nrows(_nrows), ncols(_ncols) {
         nonzeros = nrows * ncols;
-        val.resize(nonzeros);
+    }
+
+    ~dense_matrix() {
+        if (val != nullptr)
+            free(val);
     }
 
     void print() const;

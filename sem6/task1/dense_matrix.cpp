@@ -25,11 +25,11 @@ void dense_matrix::generate() {
 //    std::uniform_int_distribution<> dis(-INT_MAX, INT_MAX);
     std::normal_distribution<> dis(0, 1000);
 //    std::binomial_distribution<> dis(1000, 0.5);
-    val.resize(0);
+    val = (double *)calloc(nonzeros, sizeof(double));
     for (uint32_t i = 0; i < nrows; i++) {
         for (uint32_t j = 0; j < ncols; j++) {
 //            val.push_back(dis(gen));
-            val.push_back((i+1)/(j+1)+10);
+            val[i * nrows + j] = (i+1)/(j+1)+10;
         }
     }
     std::cout << "Generation completed\n";

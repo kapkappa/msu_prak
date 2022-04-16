@@ -48,6 +48,7 @@ int main(int argc, char** argv) {
 
     std::vector<double> b = generate_vector(A, size);
     std::vector<double> hh(size, 0.0);
+    std::vector<double> x(size, 0.0);
 
     uint32_t nrows = A.nrows, ncols = A.ncols;
 
@@ -88,15 +89,22 @@ int main(int argc, char** argv) {
 
     double t1 = timer();
 
-    std::vector<double> x = solve_gauss(A, b);
+    std::vector<double> b_local = b;
+
+    for (int32_t i = size-1; i >= 0; i--) {
+        for (uint32_t j = i+1; j < size; j++)
+            b[i] -= A.val[i * size + j] * x[j];
+
+        x[i] = b[i] / A.val[i * size + i];
+    }
 
     double t2 = timer();
 
     std::cout << "Hosehold time: " << t1-t0 << std::endl;
     std::cout << "Gauss time: " << t2-t1 << std::endl;
     std::cout << "Total time: " << t2-t0 << std::endl;
+    std::cout << "||Ax-b|| = " << get_discrepancy(A, x, b_local) << std::endl;
     std::cout << "Error norm: " << get_error_norm(x) << std::endl;
-    std::cout << "||Ax-b|| = " << get_discrepancy(A, x, b) << std::endl;
 
     return 0;
 }
