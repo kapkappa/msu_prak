@@ -25,7 +25,4 @@ public:
     void print() const;
     void generate();
     void transpose();
-    std::vector<double> get_column(uint32_t ) const;
-    std::vector<double> get_column(uint32_t, uint32_t ) const;
-    std::vector<double> get_minor_column(uint32_t ) const;
 };

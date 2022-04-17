@@ -50,35 +50,3 @@ void dense_matrix::transpose() {
     free(val);
     val = res;
 }
-
-std::vector<double> dense_matrix::get_column(uint32_t index) const {
-    assert(index < ncols);
-    assert(is_allocated);
-    std::vector<double> column;
-    for (uint32_t i = 0; i < nrows; i++)
-        column.push_back(val[i * nrows + index]);
-
-    return column;
-}
-
-std::vector<double> dense_matrix::get_column(uint32_t col, uint32_t row) const {
-    assert(col < ncols);
-    assert(row < nrows);
-    assert(is_allocated);
-    std::vector<double> column;
-    for (uint32_t i = row; i < nrows; i++)
-        column.push_back(val[i * nrows + col]);
-
-    return column;
-}
-
-std::vector<double> dense_matrix::get_minor_column(uint32_t index) const {
-    assert(index < ncols);
-    assert(index < nrows);
-    assert(is_allocated);
-    std::vector<double> column;
-    for (uint32_t i = index; i < nrows; i++)
-        column.push_back(val[i * nrows + index]);
-
-    return column;
-}
