@@ -24,13 +24,6 @@ static inline double sgn(double x) {
     return 0.0;
 }
 
-static inline double get_norm(double * x, uint32_t len) {
-    double res = 0.0;
-    for (uint32_t it = 0; it < len; it++)
-        res += x[it] * x[it];
-    return std::sqrt(res);
-}
-
 int nthreads = 1;
 
 int main(int argc, char** argv) {
@@ -51,19 +44,20 @@ int main(int argc, char** argv) {
     double * hh = (double *)calloc(size, sizeof(double));
 
     generate_vector(A, b, size);
+
     std::vector<double> x(size, 0.0);
 
-    uint32_t nrows = A.nrows, ncols = A.ncols;
+    A.transpose();
 
     double t0 = timer();
 
     for (uint32_t i = 0; i < size-1; i++) {
 /////// CREATING HAUSEHOLDER VECTOR hh
-        uint32_t len = nrows - i;
+        uint32_t len = size - i;
 
 #pragma omp parallel for
-        for (uint32_t j = i; j < nrows; j++)
-            hh[j-i] = A.val[j * ncols + i];
+        for (uint32_t j = i; j < size; j++)
+            hh[j-i] = A.val[i * size + j];
 
         double hh_norm = get_norm(hh, len);
         hh[0] += sgn(hh[0]) * hh_norm;
@@ -75,12 +69,12 @@ int main(int argc, char** argv) {
 
 //////  HAUSEHOLDER DECOMPOSITION
 #pragma omp parallel for
-        for (uint32_t col = i; col < ncols; col++) {
+        for (uint32_t col = i; col < size; col++) {
             double sum = 0.0;
             for (uint32_t k = 0; k < len; k++)
-                sum += 2.0 * hh[k] * A.val[(k+i) * ncols + col];
+                sum += 2.0 * hh[k] * A.val[col * size + i + k];
             for (uint32_t k = 0; k < len; k++)
-                A.val[(k+i) * ncols + col] -= sum * hh[k];
+                A.val[col * size + i + k] -= sum * hh[k];
         }
 
         double sum = 0.0;
@@ -98,12 +92,14 @@ int main(int argc, char** argv) {
 
     for (int32_t i = size-1; i >= 0; i--) {
         for (uint32_t j = i+1; j < size; j++)
-            b[i] -= A.val[i * size + j] * x[j];
+            b[i] -= A.val[j * size + i] * x[j];
 
         x[i] = b[i] / A.val[i * size + i];
     }
 
     double t2 = timer();
+
+    A.transpose();
 
     std::cout << "Hosehold time: " << t1-t0 << std::endl;
     std::cout << "Gauss time: " << t2-t1 << std::endl;

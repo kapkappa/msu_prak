@@ -23,4 +23,5 @@ public:
 
     void print() const;
     void generate();
+    void transpose();
 };

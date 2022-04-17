@@ -35,3 +35,14 @@ void dense_matrix::generate() {
     std::cout << "Generation completed\n";
     if_empty = false;
 }
+
+void dense_matrix::transpose() {
+    double * res = (double*)malloc(nonzeros * sizeof(double));
+    for (uint32_t k = 0; k < nrows * ncols; k++) {
+        uint32_t i = k / nrows;
+        uint32_t j = k % nrows;
+        res[k] = val[j * ncols + i];
+    }
+    free(val);
+    val = res;
+}
