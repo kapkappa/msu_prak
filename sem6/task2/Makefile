@@ -1,6 +1,6 @@
 CXX = mpicxx
-CXXFLAGS = -std=c++17 -fopenmp
-XLCFLAGS = -std=c++11 -qsmp=omp
+CXXFLAGS = -std=c++17
+XLCFLAGS = -std=c++11
 BUILD ?= Debug
 MACHINE ?= Desktop
 
