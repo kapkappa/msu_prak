@@ -87,6 +87,8 @@ int main(int argc, char** argv) {
 
     uint32_t nrows = A.nrows, ncols = A.ncols;
 
+    MPI_Barrier(MPI_COMM_WORLD);
+
     double t0 = timer();
 
     for (uint32_t i = 0; i < size-1; i++) {
@@ -155,6 +157,14 @@ int main(int argc, char** argv) {
 
     double t2 = timer();
 
+    double local_hh_time = t1-t0, hh_time;
+    double local_gs_time = t2-t1, gs_time;
+    double local_all_time = t2-t0, all_time;
+
+    MPI_Allreduce(&local_hh_time, &hh_time, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+    MPI_Allreduce(&local_gs_time, &gs_time, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+    MPI_Allreduce(&local_all_time, &all_time, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+
     for (uint32_t i = 0; i < size / world_size; i++)
         MPI_Gather(columns[i], size, MPI_DOUBLE, A.val + i * world_size * size, size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
@@ -168,9 +178,9 @@ int main(int argc, char** argv) {
     if (rank == 0) {
         A.transpose();
 
-        std::cout << "Hosehold time: " << t1-t0 << std::endl;
-        std::cout << "Gauss time: " << t2-t1 << std::endl;
-        std::cout << "Total time: " << t2-t0 << std::endl;
+        std::cout << "Hosehold time: " << hh_time << std::endl;
+        std::cout << "Gauss time: " << gs_time << std::endl;
+        std::cout << "Total time: " << all_time << std::endl;
         std::cout << "||Ax-b|| = " << get_discrepancy(A, x_global, b_local) << std::endl;
         std::cout << "Error norm: " << get_error_norm(x_global, size) << std::endl;
     }
