@@ -8,6 +8,15 @@
 #include <vector>
 #include <math.h>
 
+namespace {
+
+double get_number(uint32_t i, uint32_t j) {
+//    return cos(i * j + M_PI);
+    return i * j + 10;
+}
+
+}
+
 void sparse_matrix::print() const {
     if (is_empty)
         return;
@@ -40,19 +49,19 @@ void sparse_matrix::generate() {
                 uint32_t diag_position = 0;
                 if (K > 0) {
                     k = (K - 1) * cube_size * cube_size + J * cube_size + I;
-                    val.push_back(cos(i * k + M_PI));
+                    val.push_back(get_number(i, k));
                     col.push_back(k);
                     j++;
                 }
                 if (J > 0) {
                     k = K * cube_size * cube_size + (J - 1) * cube_size + I;
-                    val.push_back(cos(i * k + M_PI));
+                    val.push_back(get_number(i, k));
                     col.push_back(k);
                     j++;
                 }
                 if (I > 0) {
                     k = K * cube_size * cube_size + J * cube_size + I - 1;
-                    val.push_back(cos(i * k + M_PI));
+                    val.push_back(get_number(i, k));
                     col.push_back(k);
                     j++;
                 }
@@ -62,19 +71,19 @@ void sparse_matrix::generate() {
                 j++;
                 if (I + 1 != cube_size) {
                     k = K * cube_size * cube_size + J * cube_size + I + 1;
-                    val.push_back(cos(i * k + M_PI));
+                    val.push_back(get_number(i, k));
                     col.push_back(k);
                     j++;
                 }
                 if (J + 1 != cube_size) {
                     k = K * cube_size * cube_size + (J + 1) * cube_size + I;
-                    val.push_back(cos(i * k + M_PI));
+                    val.push_back(get_number(i, k));
                     col.push_back(k);
                     j++;
                 }
                 if (K + 1 != cube_size) {
                     k = (K + 1) * cube_size * cube_size + J * cube_size + I;
-                    val.push_back(cos(i * k + M_PI));
+                    val.push_back(get_number(i, k));
                     col.push_back(k);
                     j++;
                 }
