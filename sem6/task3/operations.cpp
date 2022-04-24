@@ -58,12 +58,12 @@ void precond(std::vector<double>& z, const std::vector<double>& r) {
 void precond(std::vector<double>& z, const std::vector<double>& diag, const std::vector<double>& r) {
     assert(diag.size() == r.size());
 
-    for (uint32_t i = 0; i < z.size(); i++) {
-        z[i] = 0.0;
-        for (uint32_t j = 0; j < r.size(); j++) {
-            z[i] += r[j] * diag[j];
-        }
-    }
+    double point = 0.0;
+    for (uint32_t j = 0; j < r.size(); j++)
+        point += r[j] * diag[j];
+
+    for (uint32_t i = 0; i < z.size(); i++)
+        z[i] = point;
 }
 
 void print(const std::vector<double>& x) {
