@@ -18,6 +18,7 @@ void spmv(const sparse_matrix& A, const std::vector<double>& x, std::vector<doub
     uint32_t width = A.row_size;
 
     for (uint32_t i = 0; i < nrows; i++) {
+        y[i] = 0.0;
         for (uint32_t j = 0; j < A.row_size; j++)
             y[i] += x[A.col[i * width + j]] * A.val[i * width + j];
     }
