@@ -41,6 +41,30 @@ void axpby(double alpha, const std::vector<double>& x, double betta, std::vector
         y[i] = alpha * x[i] + betta * y[i];
 }
 
+void precond(std::vector<double>& z, const std::vector<double>& r) {
+    assert(z.size() == r.size());
+
+    for (uint32_t i = 0; i < z.size(); i++) {
+        z[i] = 0.0;
+/*
+        for (uint32_t j = 0; j < r.size(); j++) {
+            z[i] += r[j] * ???
+        }
+*/
+        z[i] = r[i];
+    }
+}
+
+void precond(std::vector<double>& z, const std::vector<double>& diag, const std::vector<double>& r) {
+    assert(diag.size() == r.size());
+
+    for (uint32_t i = 0; i < z.size(); i++) {
+        z[i] = 0.0;
+        for (uint32_t j = 0; j < r.size(); j++) {
+            z[i] += r[j] * diag[j];
+        }
+    }
+}
 
 void print(const std::vector<double>& x) {
     for (const auto& it : x)

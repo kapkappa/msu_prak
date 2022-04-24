@@ -21,4 +21,5 @@ public:
 
     void print() const;
     void generate();
+    std::vector<double> get_diag() const;
 };

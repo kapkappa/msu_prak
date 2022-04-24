@@ -11,8 +11,8 @@
 namespace {
 
 double get_number(uint32_t i, uint32_t j) {
-//    return cos(i * j + M_PI);
-    return i * j + 10;
+    return cos(i * j + M_PI);
+//    return i * j + 10;
 }
 
 }
@@ -101,3 +101,19 @@ void sparse_matrix::generate() {
     is_empty = false;
     std::cout << "Generation completed\n";
 }
+
+std::vector<double> sparse_matrix::get_diag() const {
+    std::vector<double> result(nrows, 0.0);
+
+    for (uint32_t i = 0; i < nrows; i++) {
+        for (uint32_t j = 0; j < row_size; j++) {
+            if (col[i * row_size + j] == i) {
+                result[i] = val[i * row_size + j];
+                break;
+            }
+        }
+    }
+
+    return result;
+}
+

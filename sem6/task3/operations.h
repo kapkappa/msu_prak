@@ -6,6 +6,9 @@ double dot(const std::vector<double>& , const std::vector<double>&);
 
 void axpby(double, const std::vector<double>&, double, std::vector<double>&);
 
+void precond(std::vector<double>&, const std::vector<double>&);
+void precond(std::vector<double>&, const std::vector<double>&, const std::vector<double>&);
+
 void print(const std::vector<double> &);
 
 std::vector<double> generate_vector(const sparse_matrix&);

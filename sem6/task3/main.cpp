@@ -25,15 +25,18 @@ int main(int argc, char** argv) {
     omp_set_num_threads(nthreads);
     std::cout << "Threads number: " << omp_get_max_threads() << std::endl;
 
-    uint32_t cube_size;
-    if (argc == 1)
-        cube_size = 10;
-    else
+    uint32_t cube_size = 10;
+    uint32_t max_iters = 50;
+
+    if (argc >= 2) {
         cube_size = atoi(argv[1]);
+        if (argc == 3)
+            max_iters = atoi(argv[2]);
+    }
 
     sparse_matrix A(cube_size);
     A.generate();
-    A.print();
+//    A.print();
     assert(check_symmetry(A));
 
     uint32_t size = A.nrows;
@@ -50,35 +53,34 @@ int main(int argc, char** argv) {
     double betta, alpha;
 
     uint32_t k = 1;
-    uint32_t max_iters = 300;
 
     bool convergence = false;
 
-    sparse_matrix M(cube_size);
+    auto m = A.get_diag();
 
     double t0 = timer();
 
     r = b;
+    precond(z, m, r);
+    p = z;
 
-// z <- M^{-1} * r
-//    z = r;
-
-    p = r;
     while (!convergence) {
-        std::cout << "Iter: " << k << "   Norm: " << get_norm(r) << std::endl;
-//        auto z = spmv(M, r);
+//        std::cout << "Iter: " << k << "   Norm: " << get_norm(r) << std::endl;
+
         spmv(A, p, q);
-        scalar1 = dot(r, r);
+        scalar1 = dot(r, z);
         scalar2 = dot(p, q);
         alpha = scalar1 / scalar2;
 
         axpby(alpha, p, 1.0, x);
         axpby(-alpha, q, 1.0, r);
 
-        scalar3 = dot(r, r);
+        precond(z, m, r);
+
+        scalar3 = dot(r, z);
         betta = scalar3 / scalar1;
-        axpby(1.0, r, betta, p);
-//        k++;
+        axpby(1.0, z, betta, p);
+
         if (get_norm(r) < 1e-10 || k >= max_iters)
             convergence = true;
         else
@@ -87,9 +89,9 @@ int main(int argc, char** argv) {
 
     double t1 = timer();
 
-    std::cout << "r: " << get_norm(r) << std::endl;
+    std::cout << "Iters: " << k << " Residual: " << get_norm(r) << std::endl;
 
-    print(x);
+//    print(x);
 
     std::cout << "Total time: " << t1-t0 << std::endl;
     std::cout << "||Ax-b|| = " << get_discrepancy(A, x, b) << std::endl;
