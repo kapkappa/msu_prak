@@ -16,7 +16,7 @@ endif
 
 ifeq ($(MACHINE), Polus)
 CXXFLAGS = $(XLCFLAGS)
-CXX = mpixlC
+CXX = xlc++
 endif
 
 all: clean prog
