@@ -81,10 +81,8 @@ int main(int argc, char** argv) {
         betta = scalar3 / scalar1;
         axpby(1.0, z, betta, p);
 
-        if (get_norm(r) < 1e-10 || k >= max_iters)
+        if (get_norm(r) < 1e-10 || ++k >= max_iters)
             convergence = true;
-        else
-            k++;
     }
 
     double t1 = timer();
