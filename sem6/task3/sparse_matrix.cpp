@@ -10,7 +10,7 @@
 
 namespace {
 
-double get_number(uint32_t i, uint32_t j) {
+static inline double get_number(uint32_t i, uint32_t j) {
     return cos(i * j + M_PI);
 //    return i * j + 10;
 }
@@ -34,11 +34,14 @@ void sparse_matrix::print() const {
     }
 }
 
-void sparse_matrix::generate() {
+void sparse_matrix::generate_cube(uint32_t _cube_size) {
     std::cout << "Generation started\n";
 
 //    val.resize(nrows * row_size);
 //    col.resize(nrows * row_size);
+
+    cube_size = _cube_size;
+    row_size = 7;
 
     for (uint32_t K = 0; K < cube_size; K++) {
         for (uint32_t J = 0; J < cube_size; J++) {
@@ -52,18 +55,21 @@ void sparse_matrix::generate() {
                     val.push_back(get_number(i, k));
                     col.push_back(k);
                     j++;
+                    nonzeros++;
                 }
                 if (J > 0) {
                     k = K * cube_size * cube_size + (J - 1) * cube_size + I;
                     val.push_back(get_number(i, k));
                     col.push_back(k);
                     j++;
+                    nonzeros++;
                 }
                 if (I > 0) {
                     k = K * cube_size * cube_size + J * cube_size + I - 1;
                     val.push_back(get_number(i, k));
                     col.push_back(k);
                     j++;
+                    nonzeros++;
                 }
                 val.push_back(0.0);
                 col.push_back( K * cube_size * cube_size + J * cube_size + I );
@@ -74,18 +80,21 @@ void sparse_matrix::generate() {
                     val.push_back(get_number(i, k));
                     col.push_back(k);
                     j++;
+                    nonzeros++;
                 }
                 if (J + 1 != cube_size) {
                     k = K * cube_size * cube_size + (J + 1) * cube_size + I;
                     val.push_back(get_number(i, k));
                     col.push_back(k);
                     j++;
+                    nonzeros++;
                 }
                 if (K + 1 != cube_size) {
                     k = (K + 1) * cube_size * cube_size + J * cube_size + I;
                     val.push_back(get_number(i, k));
                     col.push_back(k);
                     j++;
+                    nonzeros++;
                 }
                 for (uint32_t jj = j; jj < row_size; jj++) {
                     val.push_back(0.0);
@@ -94,24 +103,25 @@ void sparse_matrix::generate() {
                 double sum = 0.0;
                 for (uint32_t jj = 0; jj < row_size; jj++)
                     sum += val[i * row_size + jj];
-                val[i * row_size + diag_position] = 15 * sum;
+                val[i * row_size + diag_position] = 1.5 * sum;
+                nonzeros++;
             }
         }
     }
     is_empty = false;
-    std::cout << "Generation completed\n";
+    std::cout << "Generation completed, nonzeros: " << nonzeros << "\n";
 }
 
 std::vector<double> sparse_matrix::get_diag() const {
     std::vector<double> result(nrows, 0.0);
 
     for (uint32_t i = 0; i < nrows; i++) {
-        for (uint32_t j = 0; j < row_size; j++) {
-            if (col[i * row_size + j] == i) {
-                result[i] = val[i * row_size + j];
-                break;
-            }
+        uint32_t j = 0;
+        while (col[i * row_size + j] != i) {
+            assert(j < row_size);
+            j++;
         }
+        result[i] = val[i * row_size + j];
     }
 
     return result;

@@ -12,14 +12,15 @@ public:
     bool is_empty = true;
     uint32_t cube_size = 0;
     uint32_t nrows, ncols = 0;
-    uint32_t row_size = 7;
+    uint32_t row_size = 0;
+    uint64_t nonzeros = 0;
 
-    sparse_matrix(uint32_t _cube_size) : cube_size(_cube_size) {
-        nrows = cube_size * cube_size * cube_size;
-        ncols = nrows;
+    sparse_matrix(uint32_t _size) {
+        nrows = _size;
+        ncols = _size;
     }
 
     void print() const;
-    void generate();
+    void generate_cube(uint32_t);
     std::vector<double> get_diag() const;
 };

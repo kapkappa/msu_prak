@@ -9,7 +9,7 @@
 #include <vector>
 #include <cstdint>
 
-void spmv(const sparse_matrix& A, const std::vector<double>& x, std::vector<double>& y) {
+inline void spmv(const sparse_matrix& A, const std::vector<double>& x, std::vector<double>& y) {
     assert(y.size() == A.nrows);
     assert(A.ncols == x.size());
 
@@ -28,7 +28,7 @@ void spmv(const sparse_matrix& A, const std::vector<double>& x, std::vector<doub
     }
 }
 
-double dot(const std::vector<double>& x, const std::vector<double>& y) {
+inline double dot(const std::vector<double>& x, const std::vector<double>& y) {
     assert(x.size() == y.size());
 
     auto nthreads = omp_get_max_threads();
@@ -44,7 +44,7 @@ double dot(const std::vector<double>& x, const std::vector<double>& y) {
 }
 
 
-void axpby(double alpha, const std::vector<double>& x, double betta, std::vector<double>& y) {
+inline void axpby(double alpha, const std::vector<double>& x, double betta, std::vector<double>& y) {
     assert(x.size() == y.size());
 
     auto nthreads = omp_get_max_threads();
@@ -55,7 +55,7 @@ void axpby(double alpha, const std::vector<double>& x, double betta, std::vector
         y[i] = alpha * x[i] + betta * y[i];
 }
 
-void precond(std::vector<double>& z, const std::vector<double>& r) {
+inline void precond(std::vector<double>& z, const std::vector<double>& r) {
     assert(z.size() == r.size());
 
     for (uint32_t i = 0; i < z.size(); i++) {
@@ -69,7 +69,7 @@ void precond(std::vector<double>& z, const std::vector<double>& r) {
     }
 }
 
-void precond(std::vector<double>& z, const std::vector<double>& diag, const std::vector<double>& r) {
+inline void precond(std::vector<double>& z, const std::vector<double>& diag, const std::vector<double>& r) {
     assert(diag.size() == r.size());
 
     auto nthreads = omp_get_max_threads();
@@ -84,13 +84,13 @@ void precond(std::vector<double>& z, const std::vector<double>& diag, const std:
     set_const(z, point);
 }
 
-void print(const std::vector<double>& x) {
+inline void print(const std::vector<double>& x) {
     for (const auto& it : x)
         std::cout << it << " ";
     std::cout << std::endl;
 }
 
-std::vector<double> generate_vector(const sparse_matrix& A) {
+inline std::vector<double> generate_vector(const sparse_matrix& A) {
     std::vector<double> b(A.nrows, 0.0);
 
     for (uint32_t i = 0; i < A.nrows; i++) {
@@ -115,20 +115,20 @@ double get_discrepancy(const sparse_matrix& A, const std::vector<double>& x, con
     return get_norm(difference);
 }
 
-double get_error_norm(std::vector<double> x) {
+inline double get_error_norm(std::vector<double> x) {
     for (auto& it : x)
         it -= 1;
     return get_norm(x);
 }
 
-double get_norm(const std::vector<double>& x) {
+inline double get_norm(const std::vector<double>& x) {
     double res = 0.0;
     for (const auto& it : x)
         res += it * it;
     return std::sqrt(res);
 }
 
-void set_const(std::vector<double>& x, double value) {
+inline void set_const(std::vector<double>& x, double value) {
     auto nthreads = omp_get_max_threads();
     omp_set_num_threads(nthreads);
 
