@@ -16,14 +16,13 @@ endif
 
 ifeq ($(MACHINE), Polus)
 CXXFLAGS = $(XLCFLAGS)
-CXX = mpixlC
+CXX = xlc++
 endif
 
 all: clean prog
 
 prog:
-	$(CXX) $(CXXFLAGS) sparse_matrix.cpp main.cpp -o prog
-#	$(CXX) $(CXXFLAGS) sparse_matrix.cpp operations.cpp main.cpp -o prog
+	$(CXX) $(CXXFLAGS) sparse_matrix.cpp operations.cpp main.cpp -o prog
 
 clean:
 	rm -rf prog

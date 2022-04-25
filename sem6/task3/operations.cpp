@@ -20,7 +20,7 @@ void spmv(const sparse_matrix& A, const std::vector<double>& x, std::vector<doub
     uint32_t ncols = A.ncols;
     uint32_t width = A.row_size;
 
-#pragma omp for
+#pragma omp parallel for
     for (uint32_t i = 0; i < nrows; i++) {
         y[i] = 0.0;
         for (uint32_t j = 0; j < A.row_size; j++)
@@ -36,7 +36,7 @@ double dot(const std::vector<double>& x, const std::vector<double>& y) {
 
     double res = 0.0;
 
-#pragma omp for
+#pragma omp parallel for reduction(+:res)
     for (uint32_t i = 0; i < x.size(); i++)
         res += x[i] * y[i];
 
@@ -50,7 +50,7 @@ void axpby(double alpha, const std::vector<double>& x, double betta, std::vector
     auto nthreads = omp_get_max_threads();
     omp_set_num_threads(nthreads);
 
-#pragma omp for
+#pragma omp parallel for
     for (uint32_t i = 0; i < y.size(); i++)
         y[i] = alpha * x[i] + betta * y[i];
 }
@@ -77,7 +77,7 @@ void precond(std::vector<double>& z, const std::vector<double>& diag, const std:
 
     double point = 0.0;
 
-#pragma parallel for reduction(+:point)
+#pragma omp parallel for reduction(+:point)
     for (uint32_t j = 0; j < r.size(); j++)
         point += r[j] * diag[j];
 
@@ -132,7 +132,7 @@ void set_const(std::vector<double>& x, double value) {
     auto nthreads = omp_get_max_threads();
     omp_set_num_threads(nthreads);
 
-#pragma omp for
+#pragma omp parallel for
     for (uint32_t i = 0; i < x.size(); i++)
         x[i] = value;
 }

@@ -21,5 +21,3 @@ double get_norm(const std::vector<double>&);
 void set_const(std::vector<double>&, double);
 
 bool check_symmetry(const sparse_matrix&);
-
-#include "operations.inl"
