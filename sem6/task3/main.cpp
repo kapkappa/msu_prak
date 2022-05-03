@@ -24,6 +24,14 @@ int main(int argc, char** argv) {
     uint32_t max_solver_iters = 50;
     uint32_t nwarmups = 10, run_iters = 50;
 
+    if (argc == 1) {
+        std::cout << "Default parameters will be used.\n"
+        << "You can set custom values to cube size (argument 1),\n"
+        << "maximum of solver iterations (argument 2),\n"
+        << "number of test runs (argument 3)\n"
+        << "and number of warmups (argument 4).\n"
+        << "All values must be non-negative\n\n";
+    }
     if (argc > 1)
         cube_size = atoi(argv[1]);
     if (argc > 2)
@@ -40,7 +48,7 @@ int main(int argc, char** argv) {
         << "\tmatrix size: " << size << '\n'
         << "\tmaximum solver iterations: " << max_solver_iters << '\n'
         << "\trun iters: " << run_iters << '\n'
-        << "\tnumber of warmup runs: " << nwarmups << std::endl;
+        << "\tnumber of warmup runs: " << nwarmups << "\n\n";
 
     run_iters += nwarmups;
 
@@ -79,7 +87,8 @@ int main(int argc, char** argv) {
 
         set_const(x, 0.0);
         r = b;
-        precond(z, m, r);
+//        precond(z, m, r);
+        precond(z, r);
         p = z;
 
         while (!convergence) {
@@ -93,13 +102,14 @@ int main(int argc, char** argv) {
             axpby(alpha, p, 1.0, x);
             axpby(-alpha, q, 1.0, r);
 
-            precond(z, m, r);
+//            precond(z, m, r);
+            precond(z, r);
 
             scalar3 = dot(r, z);
             betta = scalar3 / scalar1;
             axpby(1.0, z, betta, p);
 
-            if (get_norm(r) < 1e-10 || ++k >= max_solver_iters)
+            if (get_norm(r) < 1e-12 || ++k >= max_solver_iters)
                 convergence = true;
         }
 
@@ -111,6 +121,7 @@ int main(int argc, char** argv) {
     }
 
     std::cout << "Iters: " << k << std::endl;
+    std::cout << "Overall time: " << all_time << std::endl;
     std::cout << "Mean total time: " << all_time / (run_iters - nwarmups) << std::endl;
     std::cout << "Residual: " << get_norm(r) << std::endl;
     std::cout << "||Ax-b|| = " << get_discrepancy(A, x, b) << std::endl;
