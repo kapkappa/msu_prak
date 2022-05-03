@@ -102,7 +102,7 @@ void sparse_matrix::generate_cube(uint32_t _cube_size) {
                 }
                 double sum = 0.0;
                 for (uint32_t jj = 0; jj < row_size; jj++)
-                    sum += val[i * row_size + jj];
+                    sum += abs(val[i * row_size + jj]);
                 val[i * row_size + diag_position] = 1.5 * sum;
                 nonzeros++;
             }

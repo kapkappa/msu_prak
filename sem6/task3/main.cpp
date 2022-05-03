@@ -87,7 +87,8 @@ int main(int argc, char** argv) {
 
         set_const(x, 0.0);
         r = b;
-        precond(z, m, r);
+//        precond(z, m, r);
+        precond(z, r);
         p = z;
 
         while (!convergence) {
@@ -101,13 +102,14 @@ int main(int argc, char** argv) {
             axpby(alpha, p, 1.0, x);
             axpby(-alpha, q, 1.0, r);
 
-            precond(z, m, r);
+//            precond(z, m, r);
+            precond(z, r);
 
             scalar3 = dot(r, z);
             betta = scalar3 / scalar1;
             axpby(1.0, z, betta, p);
 
-            if (get_norm(r) < 1e-10 || ++k >= max_solver_iters)
+            if (get_norm(r) < 1e-12 || ++k >= max_solver_iters)
                 convergence = true;
         }
 
