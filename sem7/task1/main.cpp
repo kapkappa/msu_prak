@@ -9,7 +9,7 @@
 using namespace std::complex_literals;
 int nthreads = 1;
 
-const double HW = 1;
+const double HW = 1; // h = 1 w = 1 ???????????
 const double G = 0.01;
 
 #pragma omp declare reduction(+:std::complex<double>:omp_out += omp_in) initializer( omp_priv = omp_orig)
@@ -28,9 +28,9 @@ static inline double timer() {
 }
 
 struct basic_state {
-    bool o1su, o1sd, o2su, o2sd, ph1, ph2;
+    int o1su, o1sd, o2su, o2sd, ph1, ph2;
 
-    basic_state(bool _o1su, bool _o1sd, bool _o2su, bool _o2sd, bool _ph1, bool _ph2) : o1su(_o1su), o1sd(_o1sd), o2su(_o2su), o2sd(_o2sd), ph1(_ph1), ph2(_ph2) {}
+    basic_state(int _o1su, int _o1sd, int _o2su, int _o2sd, int _ph1, int _ph2) : o1su(_o1su), o1sd(_o1sd), o2su(_o2su), o2sd(_o2sd), ph1(_ph1), ph2(_ph2) {}
 };
 
 std::vector<basic_state> states = {
@@ -65,26 +65,26 @@ std::vector<basic_state> states = {
     {1, 1, 0, 0, 1, 1}
 };
 
-static inline double get_Hij(int i, int j) {
+static double get_Hij(int i, int j) {
     if (i == j)
         return (states[i].o2su + states[i].o2sd + states[i].ph1 + states[i].ph2) * HW; // number of photones + numbers pf excited electrons,
                                                                                        // which means that they swallow photones
 
-    if (states[i].o1su == states[j].o1su && states[i].o2su == states[j].o2su && states[i].ph1 == states[j].ph1) {
-
-        if (states[i].o1sd - states[j].o1sd == 1 && states[j].o1sd - states[i].o1sd == 1 && states[i].ph2 - states[j].ph2 == 1)
-            return std::sqrt(std::max(states[i].ph2, states[j].ph2)) * G;
-
-        if (states[i].o1sd - states[j].o1sd == -1 && states[j].o1sd - states[i].o1sd == -1 && states[i].ph2 - states[j].ph2 == -1)
-            return std::sqrt(std::max(states[i].ph2, states[j].ph2)) * G;
-
-    } else if (states[i].o1sd == states[j].o1sd && states[i].o2sd == states[j].o2sd && states[i].ph2 == states[j].ph2) {
+    if (states[i].o1sd == states[j].o1sd && states[i].o2sd == states[j].o2sd && states[i].ph2 == states[j].ph2) {
 
         if (states[i].o1su - states[j].o1su == 1 && states[j].o2su - states[i].o2su == 1 && states[i].ph1 - states[j].ph1 == 1)
-            return std::sqrt(std::max(states[i].ph1, states[j].ph1)) * G;
+            return sqrt(std::max(states[i].ph1, states[j].ph1)) * G;
 
         if (states[i].o1su - states[j].o1su == -1 && states[j].o2su - states[i].o2su == -1 && states[i].ph1 - states[j].ph1 == -1)
-            return std::sqrt(std::max(states[i].ph1, states[j].ph1)) * G;
+            return sqrt(std::max(states[i].ph1, states[j].ph1)) * G;
+
+    } else if (states[i].o1su == states[j].o1su && states[i].o2su == states[j].o2su && states[i].ph1 == states[j].ph1) {
+
+        if (states[i].o1sd - states[j].o1sd == 1 && states[j].o1sd - states[i].o1sd == 1 && states[i].ph2 - states[j].ph2 == 1)
+            return sqrt(std::max(states[i].ph2, states[j].ph2)) * G;
+
+        if (states[i].o1sd - states[j].o1sd == -1 && states[j].o1sd - states[i].o1sd == -1 && states[i].ph2 - states[j].ph2 == -1)
+            return sqrt(std::max(states[i].ph2, states[j].ph2)) * G;
     }
 
     return 0;
@@ -141,7 +141,7 @@ int main(int argc, char** argv) {
             psi_new[i] = 0;
 
             for (int j = 0; j < 24; j++) {
-                psi_new[i] += ((std::complex<double>)(i==j) - (std::complex<double>) 1i * get_Hij(i, j) * time_step) * psi_old[j];
+                psi_new[i] += ((std::complex<double>)(i==j) - 1i * get_Hij(i, j) * time_step) * psi_old[j];
             }
 
             sum += psi_new[i] * std::conj(psi_new[i]);
@@ -149,13 +149,21 @@ int main(int argc, char** argv) {
 
         double result = prob(psi_old[0]) + prob(psi_old[6]) + prob(psi_old[12]) + prob(psi_old[18]);
 
-
         file << time << ' ' << result << std::endl;
 
         time += time_step;
 
+//        for (int i = 0; i < 24; i++)
+//            psi_new[i] /= sqrt(sum);
+
         psi_old = psi_new;
 
+/*
+        if (time_step < 0.0000000001)
+                psi_old = psi_new;
+        else for (int i = 0; i < 24; i++)
+                psi_old[i] = psi_new[i] / sqrt(sum);
+*/
     }
 
     double t2 = timer();
