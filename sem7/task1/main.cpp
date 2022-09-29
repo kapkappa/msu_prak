@@ -1,29 +1,36 @@
+#include <fstream>
+#include <sys/time.h>
+#include <omp.h>
 #include <complex>
 #include <array>
 #include <vector>
 #include <iostream>
 
+using namespace std::complex_literals;
+int nthreads = 1;
+
 const double HW = 1;
 const double G = 0.01;
 
-int number_of_atoms = 2;
-bool interaction = true;
-double frequency_atom = 0.0;
-double frequency_photon = 0.0;
-int min_number_of_photons = 0;
-int max_number_of_photons = 2;
-double d_time = 0.001;
-double HPLANK = 6.62606957e-27;
-int steps = 10;
+#pragma omp declare reduction(+:std::complex<double>:omp_out += omp_in) initializer( omp_priv = omp_orig)
 
-double prob(std::complex<double> z) {
+static inline double prob(std::complex<double> z) {
     return std::abs(real(z * std::conj(z)));
 }
 
-struct basic_state {
-    bool ph1, ph2, o1su, o1sd, o2su, o2sd;
+static inline double timer() {
+    struct timeval tp;
+    struct timezone tzp;
 
-    basic_state(bool _ph1, bool _ph2, bool _o1su, bool _o1sd, bool _o2su, bool _o2sd) : ph1(_ph1), ph2(_ph2), o1su(_o1su), o1sd(_o1sd), o2su(_o2su), o2sd(_o2sd) {}
+    gettimeofday(&tp, &tzp);
+//    return ((double)tp.tv_sec + (double)tp.tv_usec * 1.e-6);
+    return omp_get_wtime();
+}
+
+struct basic_state {
+    bool o1su, o1sd, o2su, o2sd, ph1, ph2;
+
+    basic_state(bool _o1su, bool _o1sd, bool _o2su, bool _o2sd, bool _ph1, bool _ph2) : o1su(_o1su), o1sd(_o1sd), o2su(_o2su), o2sd(_o2sd), ph1(_ph1), ph2(_ph2) {}
 };
 
 std::vector<basic_state> states = {
@@ -58,25 +65,26 @@ std::vector<basic_state> states = {
     {1, 1, 0, 0, 1, 1}
 };
 
-double get_Hij(int i, int j) {
+static inline double get_Hij(int i, int j) {
     if (i == j)
         return (states[i].o2su + states[i].o2sd + states[i].ph1 + states[i].ph2) * HW; // number of photones + numbers pf excited electrons,
                                                                                        // which means that they swallow photones
-    if (states[i].o1su == states[j].o1su && states[i].o2su == states[j].o2su && states[i].ph2 == states[j].ph2) {
 
-        if(states[i].o1su - states[j].o1su == 1 && states[j].o1su - states[i].o1su == 1 && states[i].ph1 - states[j].ph1 == 1)
-            return std::sqrt(std::max(states[i].ph1, states[j].ph1)) * G;
+    if (states[i].o1su == states[j].o1su && states[i].o2su == states[j].o2su && states[i].ph1 == states[j].ph1) {
 
-        if(states[i].o1su - states[j].o1su == -1 && states[j].o1su - states[i].o1su == -1 && states[i].ph1 - states[j].ph1 == -1)
-            return std::sqrt(std::max(states[i].ph1, states[j].ph1)) * G;
-
-    } else if (states[i].o1su == states[j].o1su && states[i].o2su == states[j].o2su && states[i].ph2 == states[j].ph2) {
-
-        if(states[i].o1sd - states[j].o1sd == 1 && states[j].o2sd - states[i].o2sd == 1 && states[i].ph2 - states[j].ph2 == 1)
+        if (states[i].o1sd - states[j].o1sd == 1 && states[j].o1sd - states[i].o1sd == 1 && states[i].ph2 - states[j].ph2 == 1)
             return std::sqrt(std::max(states[i].ph2, states[j].ph2)) * G;
 
-        if(states[i].o1sd - states[j].o1sd == -1 && states[j].o2sd - states[i].o2sd == -1 && states[i].ph2 - states[j].ph2 == -1)
+        if (states[i].o1sd - states[j].o1sd == -1 && states[j].o1sd - states[i].o1sd == -1 && states[i].ph2 - states[j].ph2 == -1)
             return std::sqrt(std::max(states[i].ph2, states[j].ph2)) * G;
+
+    } else if (states[i].o1sd == states[j].o1sd && states[i].o2sd == states[j].o2sd && states[i].ph2 == states[j].ph2) {
+
+        if (states[i].o1su - states[j].o1su == 1 && states[j].o2su - states[i].o2su == 1 && states[i].ph1 - states[j].ph1 == 1)
+            return std::sqrt(std::max(states[i].ph1, states[j].ph1)) * G;
+
+        if (states[i].o1su - states[j].o1su == -1 && states[j].o2su - states[i].o2su == -1 && states[i].ph1 - states[j].ph1 == -1)
+            return std::sqrt(std::max(states[i].ph1, states[j].ph1)) * G;
     }
 
     return 0;
@@ -89,6 +97,11 @@ int main(int argc, char** argv) {
         return 0;
     }
 
+    nthreads = omp_get_max_threads();
+    omp_set_num_threads(nthreads);
+    std::cout << "Threads number: " << omp_get_max_threads() << std::endl;
+
+
     int max_time = atoi(argv[1]);
     int max_iters = atoi(argv[2]);
 
@@ -96,9 +109,18 @@ int main(int argc, char** argv) {
 
     double time = 0.0;
 
+    std::ofstream file;
+    file.open("log");
+
+    std::cout << "max time: " << max_time << std::endl;
+    std::cout << "max iters: " << max_iters << std::endl;
     std::cout << "time step: " << time_step << std::endl;
 
-    std::cout << get_Hij(23, 23) << std::endl;
+    file << max_time << std::endl;
+    file << max_iters << std::endl;
+    file << time_step << std::endl;
+
+//    std::cout << get_Hij(23, 23) << std::endl;
 
     std::array<std::complex<double>, 24> psi_old = {0, 24};
 
@@ -109,24 +131,36 @@ int main(int argc, char** argv) {
 
     std::array<std::complex<double>, 24> psi_new = {0, 24};
 
+    double t1 = timer();
+
     for (int k = 0; k < max_iters; k++) {
         std::complex<double> sum = 0;
 
+#pragma omp parallel for shared(psi_new, psi_old) reduction(+:sum)
         for (int i = 0; i < 24; i++) {
             psi_new[i] = 0;
 
             for (int j = 0; j < 24; j++) {
-                psi_new[i] += ((i==j) - (std::complex<double>) 1i * get_Hij(i, j) * time_step) * psi_old[j];
+                psi_new[i] += ((std::complex<double>)(i==j) - (std::complex<double>) 1i * get_Hij(i, j) * time_step) * psi_old[j];
             }
 
             sum += psi_new[i] * std::conj(psi_new[i]);
         }
 
-        double result = prob(psi_old[0] + prob(psi_old[6]) + prob(psi_old[12]) + prob(psi_old[18]));
+        double result = prob(psi_old[0]) + prob(psi_old[6]) + prob(psi_old[12]) + prob(psi_old[18]);
 
-        std::cout << t << ' ' << result << std::endl;
+
+        file << time << ' ' << result << std::endl;
+
+        time += time_step;
+
+        psi_old = psi_new;
 
     }
+
+    double t2 = timer();
+
+    std::cout << "calculation time: " << t2-t1 << std::endl;
 
     return 0;
 }
