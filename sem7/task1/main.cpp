@@ -9,7 +9,7 @@
 using namespace std::complex_literals;
 int nthreads = 1;
 
-const double HW = 1; // h = 1 w = 1 ???????????
+const double HW = 100; // h = 1 w = 1 ???????????
 const double G = 0.01;
 
 #pragma omp declare reduction(+:std::complex<double>:omp_out += omp_in) initializer( omp_priv = omp_orig)
@@ -28,41 +28,39 @@ static inline double timer() {
 }
 
 struct basic_state {
-    int o1su, o1sd, o2su, o2sd, ph1, ph2;
+    int ph1, ph2, o1su, o1sd, o2su, o2sd;
 
-    basic_state(int _o1su, int _o1sd, int _o2su, int _o2sd, int _ph1, int _ph2) : o1su(_o1su), o1sd(_o1sd), o2su(_o2su), o2sd(_o2sd), ph1(_ph1), ph2(_ph2) {}
+    basic_state(int _ph1, int _ph2, int _o1su, int _o1sd, int _o2su, int _o2sd) : ph1(_ph1), ph2(_ph2), o1su(_o1su), o1sd(_o1sd), o2su(_o2su), o2sd(_o2sd) {}
 };
 
 std::vector<basic_state> states = {
-    {0, 0, 1, 1, 0, 0},
-    {0, 0, 1, 1, 0, 1},
-    {0, 0, 1, 1, 1, 0},
-    {0, 0, 1, 1, 1, 1},
+    {0,0,1,1,0,0},
+    {0,0,0,1,0,1},
+    {0,0,1,0,1,0},
+    {0,0,1,0,0,1},
+    {0,0,0,1,1,0},
+    {0,0,0,0,1,1},
 
-    {0, 1, 0, 1, 0, 0},
-    {0, 1, 0, 1, 0, 1},
-    {0, 1, 0, 1, 1, 0},
-    {0, 1, 0, 1, 1, 1},
+    {0,1,1,1,0,0},
+    {0,1,0,1,0,1},
+    {0,1,1,0,1,0},
+    {0,1,1,0,0,1},
+    {0,1,0,1,1,0},
+    {0,1,0,0,1,1},
 
-    {0, 1, 1, 0, 0, 0},
-    {0, 1, 1, 0, 0, 1},
-    {0, 1, 1, 0, 1, 0},
-    {0, 1, 1, 0, 1, 1},
+    {1,0,1,1,0,0},
+    {1,0,0,1,0,1},
+    {1,0,1,0,1,0},
+    {1,0,1,0,0,1},
+    {1,0,0,1,1,0},
+    {1,0,0,0,1,1},
 
-    {1, 0, 0, 1, 0, 0},
-    {1, 0, 0, 1, 0, 1},
-    {1, 0, 0, 1, 1, 0},
-    {1, 0, 0, 1, 1, 1},
-
-    {1, 0, 1, 0, 0, 0},
-    {1, 0, 1, 0, 0, 1},
-    {1, 0, 1, 0, 1, 0},
-    {1, 0, 1, 0, 1, 1},
-
-    {1, 1, 0, 0, 0, 0},
-    {1, 1, 0, 0, 0, 1},
-    {1, 1, 0, 0, 1, 0},
-    {1, 1, 0, 0, 1, 1}
+    {1,1,1,1,0,0},
+    {1,1,0,1,0,1},
+    {1,1,1,0,1,0},
+    {1,1,1,0,0,1},
+    {1,1,0,1,1,0},
+    {1,1,0,0,1,1}
 };
 
 static double get_Hij(int i, int j) {
@@ -124,10 +122,14 @@ int main(int argc, char** argv) {
 
     std::array<std::complex<double>, 24> psi_old = {0, 24};
 
+// basic values
     psi_old[4] = 0.5;
     psi_old[0] = -0.5;
     psi_old[5] = 0.5;
     psi_old[3] = -0.5;
+
+//    psi_old[3] = 1;
+//    psi_old[0] = 1.0; - test 2
 
     std::array<std::complex<double>, 24> psi_new = {0, 24};
 
@@ -153,17 +155,9 @@ int main(int argc, char** argv) {
 
         time += time_step;
 
-//        for (int i = 0; i < 24; i++)
-//            psi_new[i] /= sqrt(sum);
+        for (int i = 0; i < 24; i++)
+            psi_old[i] = psi_new[i] / sqrt(sum);
 
-        psi_old = psi_new;
-
-/*
-        if (time_step < 0.0000000001)
-                psi_old = psi_new;
-        else for (int i = 0; i < 24; i++)
-                psi_old[i] = psi_new[i] / sqrt(sum);
-*/
     }
 
     double t2 = timer();
