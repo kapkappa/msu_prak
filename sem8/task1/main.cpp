@@ -57,7 +57,10 @@ void fill_with_number(vector::vector<double>& x, double number) {
 }
 
 void print_norm(vector::vector<double>& y, uint16_t nv) {
-    double norm[nv] = {0.0};
+    double norm[nv];
+    for (size_t i = 0; i < nv; i++)
+        norm[i] = 0.0;
+
     for (size_t i = 0; i < y.get_size(); i += nv)
         for (auto j = 0; j < nv; j++)
             norm[j] += y[i + j] * y[i + j];
