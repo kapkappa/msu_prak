@@ -111,7 +111,7 @@ int main(int argc, char** argv) {
     for (it = 0; it < niters; it++) {
 //        set_rand(y, nv);
 //        fill_with_number(y, 0.0);
-#pragma omp parallel for shared(val_ptr, x_ptr, y_ptr, size) private(i, j) schedule(static)
+#pragma omp parallel for shared(val_ptr, x_ptr, y_ptr, size) private(i, j) schedule(static) collapse(2) nowait
         for (i = 0; i < size; i++) {
 #pragma GCC ivdep
             for (j = 0; j < size; j++) {
@@ -121,7 +121,7 @@ int main(int argc, char** argv) {
     }
 
     double t2 = timer();
-    std::cout << niters << " MATVEC time: " << t2 - t1 << " sec" << std::endl;
+    std::cout << niters << " MATVEC iters, time: " << t2 - t1 << " sec" << std::endl;
     print_norm(y, nv);
 
     return 0;
