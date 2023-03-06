@@ -22,7 +22,8 @@ endif
 all: clean prog
 
 prog:
-	$(CXX) $(CXXFLAGS) dense_matrix.cpp main.cpp -o prog
+	$(CXX) $(CXXFLAGS) dense_matrix.cpp ver1.cpp -o prog1
+	$(CXX) $(CXXFLAGS) dense_matrix.cpp ver2.cpp -o prog2
 
 clean:
-	rm -rf prog
+	rm -rf prog1 prog2
