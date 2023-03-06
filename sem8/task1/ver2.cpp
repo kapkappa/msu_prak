@@ -75,7 +75,8 @@ void print_norm(vector::vector<double>& y, uint16_t nv) {
 
 
 int main(int argc, char** argv) {
-    nthreads = omp_get_max_threads();
+//    nthreads = omp_get_max_threads();
+    nthreads = 2;
     omp_set_num_threads(nthreads);
     std::cout << "nthreads: " <<  nthreads << std::endl;
     uint32_t size = 100, niters = 100;
@@ -111,9 +112,10 @@ int main(int argc, char** argv) {
 #pragma omp parallel shared(val_ptr, x_ptr, y_ptr, size, niters, nv) private(i, j, it)
 {
     for (it = 0; it < niters; it++) {
+//        std::cout << "thread number: " << omp_get_thread_num() << "\titer: " << it << std::endl;
 //        set_rand(y, nv);
 //        fill_with_number(y, 0.0);
-#pragma omp for schedule(static)
+#pragma omp for schedule(static) collapse(2) nowait
         for (i = 0; i < size; i++) {
 #pragma GCC ivdep
             for (j = 0; j < size; j++) {
@@ -123,7 +125,7 @@ int main(int argc, char** argv) {
     }
 }
     double t2 = timer();
-    std::cout << niters << " MATVEC time: " << t2 - t1 << " sec" << std::endl;
+    std::cout << niters << " MATVEC iters, time: " << t2 - t1 << " sec" << std::endl;
     print_norm(y, nv);
 
     return 0;
