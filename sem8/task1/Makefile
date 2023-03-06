@@ -6,7 +6,7 @@ MACHINE ?= Desktop
 
 ifeq ($(BUILD), Release)
 CXXFLAGS += -O3 -DNDEBUG -ffast-math -funroll-loops -ftree-vectorize -fno-asm -mavx2 -m64 -march=core-avx2 -g
-XLCFLAGS += -O5 -DNDEBUG -ffast-math -funroll-loops -ftree-vectorize -g -qsmp=omp -qarch=pwr8
+XLCFLAGS += -O5 -DNDEBUG -funroll-loops -g -qsmp=omp -qarch=pwr8
 endif
 
 ifeq ($(BUILD), Debug)
