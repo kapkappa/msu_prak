@@ -76,19 +76,20 @@ void print_norm(vector::vector<double>& y, uint16_t nv) {
 
 int main(int argc, char** argv) {
     nthreads = omp_get_max_threads();
-    omp_set_num_threads(nthreads);
-    std::cout << "nthreads: " <<  nthreads << std::endl;
     uint32_t size = 100, niters = 100;
     uint16_t nv = 1;
 
     if (argc != 4) {
-        std::cout << "matrix size\tniters\tnumber of rhs" << std::endl;
+        std::cout << "matrix size | niters | number of rhs" << std::endl;
         return 1;
     } else {
         size = std::atoi(argv[1]);
         niters = std::atoi(argv[2]);
         nv = std::atoi(argv[3]);
+//        nthreads = std::atoi(argv[4]);
     }
+
+    omp_set_num_threads(nthreads);
 
     dense_matrix matrix;
     matrix.generate(size);
@@ -111,9 +112,8 @@ int main(int argc, char** argv) {
     for (it = 0; it < niters; it++) {
 //        set_rand(y, nv);
 //        fill_with_number(y, 0.0);
-#pragma omp parallel for shared(val_ptr, x_ptr, y_ptr, size) private(i, j) schedule(static) collapse(2) nowait
+#pragma omp parallel for shared(val_ptr, x_ptr, y_ptr, size) private(i, j) schedule(static) collapse(2)
         for (i = 0; i < size; i++) {
-#pragma GCC ivdep
             for (j = 0; j < size; j++) {
                 y_ptr[i] += val_ptr[i * size + j] * x_ptr[j];
             }
