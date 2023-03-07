@@ -115,8 +115,9 @@ int main(int argc, char** argv) {
 //        std::cout << "thread number: " << omp_get_thread_num() << "\titer: " << it << std::endl;
 //        set_rand(y, nv);
 //        fill_with_number(y, 0.0);
-#pragma omp for schedule(static) collapse(2) nowait
+#pragma omp for schedule(static) collapse(2)
         for (i = 0; i < size; i++) {
+//            std::cout << "thread number: " << omp_get_thread_num() << " iter: " << it << " i: " << i << std::endl;
             for (j = 0; j < size; j++) {
                 y_ptr[i] += val_ptr[i * size + j] * x_ptr[j];
             }
