@@ -1,12 +1,12 @@
 CXX = g++
 CXXFLAGS = -std=c++17 -fopenmp
-XLCFLAGS = -std=c++11
+XLCFLAGS = -std=c++11 -qsmp=omp
 BUILD ?= Debug
 MACHINE ?= Desktop
 
 ifeq ($(BUILD), Release)
 CXXFLAGS += -O3 -DNDEBUG -ffast-math -funroll-loops -ftree-vectorize -fno-asm -mavx2 -m64 -march=core-avx2 -g
-XLCFLAGS += -O5 -DNDEBUG -funroll-loops -g -qsmp=omp -qarch=pwr8
+XLCFLAGS += -O5 -DNDEBUG -funroll-loops -qarch=pwr8 -g
 endif
 
 ifeq ($(BUILD), Debug)

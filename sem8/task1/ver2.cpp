@@ -98,8 +98,9 @@ int main(int argc, char** argv) {
     vector::vector<double> y(size * nv);
 
     set_rand(x, nv);
-    set_rand(y, nv);
+//    set_rand(y, nv);
 //    fill_with_number(x, 1.0);
+    fill_with_number(y, 0.0);
 
     const double *__restrict__ val_ptr = matrix.val.data();
     const double *__restrict__ x_ptr = x.data();
@@ -112,12 +113,10 @@ int main(int argc, char** argv) {
 #pragma omp parallel shared(val_ptr, x_ptr, y_ptr, size, niters, nv) private(i, j, it)
 {
     for (it = 0; it < niters; it++) {
-//        std::cout << "thread number: " << omp_get_thread_num() << "\titer: " << it << std::endl;
 //        set_rand(y, nv);
 //        fill_with_number(y, 0.0);
-#pragma omp for schedule(static) collapse(2)
+#pragma omp for schedule(static)
         for (i = 0; i < size; i++) {
-//            std::cout << "thread number: " << omp_get_thread_num() << " iter: " << it << " i: " << i << std::endl;
             for (j = 0; j < size; j++) {
                 y_ptr[i] += val_ptr[i * size + j] * x_ptr[j];
             }
@@ -125,7 +124,7 @@ int main(int argc, char** argv) {
     }
 }
     double t2 = timer();
-    std::cout << niters << " MATVEC iters, time: " << t2 - t1 << " sec" << std::endl;
+    std::cout << "Programm ver.2, performed " << niters << " MATVEC iters, time: " << t2 - t1 << " sec" << std::endl;
     print_norm(y, nv);
 
     return 0;
