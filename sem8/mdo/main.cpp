@@ -1,17 +1,7 @@
 #include <iostream>
-#include <utility>
 #include <vector>
 #include <bitset>
-#include <algorithm>
 #include <cstdint>
-#include <sys/time.h>
-
-double timer() {
-    struct timeval tp;
-    struct timezone tzp;
-    gettimeofday(&tp, &tzp);
-    return ((double)tp.tv_sec+(double)tp.tv_usec * 1.e-6);
-}
 
 
 #define MAX_THINGS 100
@@ -60,42 +50,9 @@ void print(const std::vector<Elem>& list) {
     std::cout << "\n" << std::endl;
 }
 
-std::vector<Elem> merge(std::vector<Elem>& base, std::vector<Elem>& addition) {
-    std::vector<Elem> result;
-    bool add;
-
-    for (auto it_base = base.begin(), it_addition = addition.begin(); it_base != base.end(); it_base++) {
-        add = true;
-
-        for ( ; it_addition != addition.end(); ) {
-            if (is_dominated(*it_addition, *it_base)) {
-                it_addition = addition.erase(it_addition);
-            } else if (is_dominated(*it_base, *it_addition)) {
-                add = false;
-                break;
-            } else if (it_base->weight > it_addition->weight && it_base->price > it_addition->price) {
-                it_addition++;
-            } else {
-                break;
-            }
-        }
-
-        if (add) {
-            result.push_back(std::move(*it_base));
-        }
-    }
-
-    for (const auto& it : addition) {
-        result.push_back(std::move(it));
-    }
-
-    return result;
-}
-
 
 std::vector<Elem> merge_sort(std::vector<Elem>& base, std::vector<Elem>& addition) {
     std::vector<Elem> result;
-//    bool base_end = false, add_end = false;
     auto it_base = base.begin();
     auto it_addition = addition.begin();
 
@@ -110,7 +67,6 @@ std::vector<Elem> merge_sort(std::vector<Elem>& base, std::vector<Elem>& additio
             it_base++;
         } else if ((weight1 < weight2 && price1 >= price2) || (weight1 == weight2 && price1 >= price2)) {
             //first list dominating second list
-//            it_addition = addition.erase(it_addition);
             it_addition++;
         } else if (weight1 > weight2 && price1 > price2) {
             //add element from the second list
@@ -118,7 +74,6 @@ std::vector<Elem> merge_sort(std::vector<Elem>& base, std::vector<Elem>& additio
             it_addition++;
         } else if ((weight1 > weight2 && price1 <= price2) || (weight1 == weight2 && price1 < price2)) {
             // second list dominating first list
-//            it_base = base.erase(it_base);
             it_base++;
         }
     }
@@ -143,8 +98,7 @@ Elem get_max(const std::vector<Elem>& list) {
     return list[position];
 }
 
-int main(int argc, char** argv) {
-//    auto t1 = timer();
+int main() {
 
     int C, n;
     std::cin >> n >> C;
@@ -157,7 +111,7 @@ int main(int argc, char** argv) {
     list.emplace_back();
 
     for (int i = 0; i < n; i++) {
-        //update list
+
         std::cin >> weight >> price;
 
         std::vector<Elem> new_list;
@@ -167,17 +121,12 @@ int main(int argc, char** argv) {
                 new_list.push_back(std::move(tmp));
         }
 
-        //merge list
+        //merge and sort list
         list = merge_sort(list, new_list);
 
-        //sort list
-//        std::sort(list.begin(), list.end(), weight_comparator);
-//        print(list);
     }
 
-//    std::sort(list.begin(), list.end(), price_comparator);
     auto final = list[list.size()-1];
-//    auto final = get_max(list);
 
     std::cout << final.price << ' ' << final.solution.count() << std::endl;
     for (int i = 0; i < MAX_THINGS; i++) {
@@ -185,9 +134,6 @@ int main(int argc, char** argv) {
             std::cout << i << std::endl;
         }
     }
-
-//    auto t2 = timer();
-//    std::cout << "Time: " << t2-t1 << std::endl;
 
     return 0;
 }
