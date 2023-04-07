@@ -41,12 +41,13 @@ void update_prices(std::vector<double>& price, const std::vector<double>& lambda
     }
 }
 
-int get_C(const std::vector<double>& lambda, int *C) {
+double get_C(const std::vector<double>& lambda, int *C) {
     double sum = 0.0;
     for (size_t i = 0; i < lambda.size(); i++) {
-        sum += (double)lambda[i] * C[i];
+        sum += (double)C[i] * lambda[i];
     }
-    return static_cast<int>(sum);
+//    return static_cast<int>(sum);
+    return sum;
 }
 
 void update_lambdas(std::vector<double>& lambda, const std::vector<int>& X, int **W, int *C, int iter) {
