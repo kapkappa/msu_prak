@@ -62,9 +62,8 @@ void print_norm(const vector::vector<double>& y) {
 }
 
 
-void sort(vector::vector<double>& x) {
+void sort(vector::vector<double>& x, size_t size) {
     double* __restrict__ x_ptr = x.data();
-    size_t size = x.get_size();
     for (size_t i = 0; i < size; i++) {
         for (size_t j = i+1; j < size; j++) {
             if (x[i] > x[j]) {
@@ -74,27 +73,26 @@ void sort(vector::vector<double>& x) {
     }
 }
 
-void merge(vector::vector<double>& tmp, vector::vector<double>& x, const vector::vector<double>& local_x, size_t x_size) {
+void merge(vector::vector<double>& tmp, vector::vector<double>& x, const vector::vector<double>& local_x, size_t size) {
     size_t i = 0, j = 0, k = 0;
-    size_t local_x_size = local_x.get_size();
 
     double*__restrict__ x_ptr = x.data();
     double*__restrict__ tmp_ptr = tmp.data();
     const double*__restrict__ local_x_ptr = local_x.data();
 
-    while (i < x_size && j < local_x_size) {
+    while (i < size && j < size) {
         if (x_ptr[i] < local_x_ptr[j]) {
             tmp_ptr[k++] = x_ptr[i++];
         } else {
             tmp_ptr[k++] = local_x_ptr[j++];
         }
     }
-    while (i < x_size)
+    while (i < size)
         tmp_ptr[k++] = x_ptr[i++];
-    while (j < local_x_size)
+    while (j < size)
         tmp_ptr[k++] = local_x_ptr[j++];
 
-    for (i = 0; i < local_x_size + x_size; i++)
+    for (i = 0; i < 2 * size; i++)
         x_ptr[i] = tmp_ptr[i];
 }
 
@@ -120,11 +118,10 @@ int main(int argc, char** argv) {
 
     vector::vector<double> x(VEC_SIZE);
     vector::vector<double> tmp(VEC_SIZE);
+    vector::vector<double> local_x(VEC_SIZE);
 
     size_t local_size = VEC_SIZE / world_size;
-    size_t current_size = local_size;
 
-    vector::vector<double> local_x(local_size);
     fill_with_number(local_x, 0.0);
     fill_with_number(tmp, 0.0);
     fill_with_number(x, 0.0);
@@ -144,22 +141,18 @@ int main(int argc, char** argv) {
         MPI_Scatter(x_ptr, local_size, MPI_DOUBLE, local_x_ptr, local_size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
     //2. each process sort its vector
-        sort(local_x);
+        sort(local_x, local_size);
+        for (size_t i = 0; i < local_x.get_size(); i++)
+            x[i] = local_x[i];
 
-    //3. merge(?)
-        if (rank == 0) {
-            for (size_t i = 0; i < local_size; i++) {
-                x[i] = local_x[i];
-            }
-        }
-
-        for (int i = 1; i < world_size; i++) {
-            if (rank == i) {
-                MPI_Send(local_x_ptr, local_size, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
-            } else if (rank == 0) {
-                MPI_Recv(local_x_ptr, local_size, MPI_DOUBLE, i, 0, MPI_COMM_WORLD, &Stat);
-                merge(tmp, x, local_x, current_size);
-                current_size += local_size;
+    //3. merge
+        for (int i = world_size / 2; i >= 1; i /= 2) {
+            if (rank < i) {
+                MPI_Recv(local_x_ptr, local_size, MPI_DOUBLE, rank + i, 0, MPI_COMM_WORLD, &Stat);
+                merge(tmp, x, local_x, local_size); //save in x
+                local_size *= 2;
+            } else if (rank < 2 * i) {
+                MPI_Send(x_ptr, local_size, MPI_DOUBLE, rank - i, 0, MPI_COMM_WORLD);
             }
         }
 
