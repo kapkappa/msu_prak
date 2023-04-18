@@ -1,8 +1,8 @@
 MPICXX = mpicxx
 
 CXX = g++
-CXXFLAGS = -std=c++17 -fopenmp
-XLCFLAGS = -std=c++11 -qsmp=omp
+CXXFLAGS = -std=c++17
+XLCFLAGS = -std=c++11
 BUILD ?= Debug
 MACHINE ?= Desktop
 
@@ -26,7 +26,7 @@ all: clean prog
 
 prog:
 	$(MPICXX) $(CXXFLAGS) ver1.cpp -o prog1
-#	$(MPICXX) $(CXXFLAGS) dense_matrix.cpp ver2.cpp -o prog2
+	$(MPICXX) $(CXXFLAGS) ver2.cpp -o prog2
 
 clean:
 	rm -rf prog1 prog2
