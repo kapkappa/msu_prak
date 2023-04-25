@@ -3,4 +3,9 @@ prog*
 *.o
 tmp
 a.out
-tex
+*.aux
+*.bbl
+*.blg
+*.gz
+*.log
+*.out

@@ -62,6 +62,18 @@ void print_norm(const vector::vector<double>& y) {
 }
 
 
+int compare(const void* a, const void* b) {
+    const double* x = (double*) a;
+	const double* y = (double*) b;
+
+	if (*x > *y)
+		return 1;
+	else if (*x < *y)
+		return -1;
+
+	return 0;
+}
+
 void sort(vector::vector<double>& x) {
     double* __restrict__ x_ptr = x.data();
     size_t size = x.get_size();
@@ -144,7 +156,8 @@ int main(int argc, char** argv) {
         MPI_Scatter(x_ptr, local_size, MPI_DOUBLE, local_x_ptr, local_size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
     //2. each process sort its vector
-        sort(local_x);
+//        sort(local_x);
+        qsort(local_x.data(), local_x.get_size(), sizeof(double), compare);
 
     //3. merge(?)
         if (rank == 0) {
