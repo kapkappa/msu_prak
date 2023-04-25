@@ -1,0 +1,15 @@
+#BSUB -J "direct_launch"
+#BSUB -n 16
+#BSUB -q short
+#BSUB -W 00:30
+#BSUB -oo logs/log.out
+#BSUB -eo logs/log.err
+#BSUB -R "span[ptile=16]"
+##BSUB -R "affinity[core(2)]"
+
+OMP_NUM_THREADS=16 ./prog 6000
+OMP_NUM_THREADS=16 ./prog 6000
+OMP_NUM_THREADS=16 ./prog 6000
+OMP_NUM_THREADS=16 ./prog 6000
+OMP_NUM_THREADS=16 ./prog 6000
+OMP_NUM_THREADS=16 ./prog 6000

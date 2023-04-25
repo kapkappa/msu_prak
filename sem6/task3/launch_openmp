@@ -1,0 +1,14 @@
+#BSUB -J "launch_openmp"
+##BSUB -n 3
+#BSUB -q short
+#BSUB -W 00:30
+#BSUB -oo logs/log.out
+#BSUB -eo logs/log.err
+#BSUB -R "affinity[core(1)]"
+
+OMP_NUM_THREADS=1 ~/launchOpenMP.py ./prog 100 150 50 10
+OMP_NUM_THREADS=1 ~/launchOpenMP.py ./prog 100 150 50 10
+OMP_NUM_THREADS=1 ~/launchOpenMP.py ./prog 100 150 50 10
+OMP_NUM_THREADS=1 ~/launchOpenMP.py ./prog 100 150 50 10
+OMP_NUM_THREADS=1 ~/launchOpenMP.py ./prog 100 150 50 10
+OMP_NUM_THREADS=1 ~/launchOpenMP.py ./prog 100 150 50 10

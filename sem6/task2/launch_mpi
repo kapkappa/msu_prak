@@ -1,0 +1,14 @@
+#BSUB -J "launch_mpi"
+#BSUB -n 60
+#BSUB -q normal
+#BSUB -W 01:00
+#BSUB -oo logs/log.out
+#BSUB -eo logs/log.err
+#BSUB -R "span[ptile=20]"
+
+mpiexec --map-by core --bind-to core ./prog 10000
+mpiexec --map-by core --bind-to core ./prog 10000
+mpiexec --map-by core --bind-to core ./prog 10000
+mpiexec --map-by core --bind-to core ./prog 10000
+mpiexec --map-by core --bind-to core ./prog 10000
+mpiexec --map-by core --bind-to core ./prog 10000
