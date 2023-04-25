@@ -176,7 +176,7 @@ int main(int argc, char** argv) {
     if (rank == 0) {
         print_norm(x);
         std::cout << "Is sorted: " << check_is_sorted(x) << std::endl;
-        std::cout << "Programm ver.1, performance time: " << t2 - t1 << " sec" << std::endl;
+        std::cout << "Programm ver.2, performance time: " << t2 - t1 << " sec" << std::endl;
     }
 
     MPI_Finalize();

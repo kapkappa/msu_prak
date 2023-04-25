@@ -1,19 +1,25 @@
 #BSUB -J "launch_mpi"
-#BSUB -n 4
-#BSUB -m polus-c4-ib
+#BSUB -n 32
+##BSUB -m polus-c4-ib
 #BSUB -q normal
 #BSUB -W 01:30
 #BSUB -oo logs/log.out
 #BSUB -eo logs/log.err
-##BSUB -R "span[ptile=16]"
+#BSUB -R "span[ptile=16]"
 ##BSUB -R "span[hosts=2]"
 
-mpiexec --map-by core --bind-to core ./prog1 64000
-mpiexec --map-by core --bind-to core ./prog1 64000
-mpiexec --map-by core --bind-to core ./prog1 64000
-mpiexec --map-by core --bind-to core ./prog1 64000
+mpiexec --map-by core --bind-to core ./prog1 16000000
+mpiexec --map-by core --bind-to core ./prog1 16000000
+mpiexec --map-by core --bind-to core ./prog1 16000000
+mpiexec --map-by core --bind-to core ./prog1 16000000
+mpiexec --map-by core --bind-to core ./prog1 16000000
+mpiexec --map-by core --bind-to core ./prog1 16000000
 
-mpiexec --map-by core --bind-to core ./prog2 64000
-mpiexec --map-by core --bind-to core ./prog2 64000
-mpiexec --map-by core --bind-to core ./prog2 64000
-mpiexec --map-by core --bind-to core ./prog2 64000
+
+mpiexec --map-by core --bind-to core ./prog2 16000000
+mpiexec --map-by core --bind-to core ./prog2 16000000
+mpiexec --map-by core --bind-to core ./prog2 16000000
+mpiexec --map-by core --bind-to core ./prog2 16000000
+mpiexec --map-by core --bind-to core ./prog2 16000000
+mpiexec --map-by core --bind-to core ./prog2 16000000
+
