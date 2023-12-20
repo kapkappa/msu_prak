@@ -25,9 +25,7 @@ int main(int argc, char** argv) {
 
     std::cout << comparators.size() << std::endl;
 
-    comparators.clear();
-
-    int res = ceil(std::log2(size)) * (ceil(std::log2(size)) + 1) / 2;
+    int res = calc_tacts(comparators);
     std::cout << res << std::endl;
 
     return 0;

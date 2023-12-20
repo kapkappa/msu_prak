@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <utility>
+#include <algorithm>
 
 extern std::vector<std::pair<int, int>> comparators;
 
@@ -72,4 +73,14 @@ void S(std::vector<T>& array, int a, int b, int d, int n, int m) {
         comparator<T>(array, b+d*i, b+d*(i+1));
         comparators.push_back(std::make_pair(b + d*i, b + d*(i+1)));
     }
+}
+
+int calc_tacts(const std::vector<std::pair<int, int>>& comparators) {
+    std::vector<int> tacts(comparators.size(), 0);
+    for (const auto& cmp : comparators) {
+        int max = std::max(tacts[cmp.first], tacts[cmp.second]) + 1;
+        tacts[cmp.first] = max;
+        tacts[cmp.second] = max;
+    }
+    return *std::max_element(tacts.begin(), tacts.end());
 }
