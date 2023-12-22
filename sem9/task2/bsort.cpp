@@ -13,18 +13,16 @@ static inline double timer() {
     return ((double)tp.tv_sec + (double)tp.tv_usec * 1.e-6);
 }
 
-
-
-
 int rank, world_size;
 int tacts_count = 0;
+bool reverse = false;
 
 template <typename T>
 void SSS(std::vector<T>& array1, std::vector<T>& array2, std::vector<T>& array_all) {
     int i = 0, j = 0, k = 0;
 
     while (i < array1.size() && j < array2.size()) {
-        if (array1[i] < array2[j]) {
+        if (reverse ? array1[i] > array2[j] : array1[i] < array2[j]) {
             array_all[k++] = array1[i++];
         } else {
             array_all[k++] = array2[j++];
@@ -42,8 +40,6 @@ void SSS(std::vector<T>& array1, std::vector<T>& array2, std::vector<T>& array_a
 template <typename T>
 void SS(std::vector<T>& array, int pos1, int pos2) {
     if (rank != pos1 && rank != pos2) return;
-
-    printf("ss\n");
 
     auto arr_size = array.size();
 
@@ -123,6 +119,7 @@ template <typename T>
 void print(const std::vector<T>& array) {
     for (int i = 0; i < world_size; i++) {
         if (rank == i) {
+            std::cout << "rank: " << rank;
             for (const auto& elem : array)
                 std::cout << ' ' << elem;
             std::cout << std::endl;
@@ -132,21 +129,20 @@ void print(const std::vector<T>& array) {
 }
 
 int main(int argc, char** argv) {
-    if (argc != 2) {
-        std::cerr << "Enter the size of array!" << std::endl;
+    if (argc != 3) {
+        std::cerr << "Enter the size of array and direction of sorting ({0, <}, {1, >})!" << std::endl;
+        return 1;
     }
-
-    int size = atoi(argv[1]);
 
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 
+    int size = atoi(argv[1]);
+    reverse = atoi(argv[2]);
+
     int local_size = (size + world_size - 1) / world_size;
-    int extra = 0;
-    if (!rank) {
-        extra = size % world_size;
-    }
+    int extra = size % world_size;
 
     std::vector<double> array(local_size);
 
@@ -154,22 +150,25 @@ int main(int argc, char** argv) {
 
     for (int i = 0; i < local_size; i++) {
         array[i] = rand() % 10000;
-        if (i >= size / world_size + extra) {
-            array[i] = DBL_MAX;
+        if (rank >= extra && i >= size / world_size) {
+            array[i] = reverse ? DBL_MAX : -DBL_MAX;
         }
     }
 
-    //print(array);
+//    print(array);
 
     MPI_Barrier(MPI_COMM_WORLD);
     double t0 = timer();
 
-    std::sort(array.begin(), array.end());
+    if (reverse)
+        std::sort(array.begin(), array.end(), std::greater<double>());
+    else
+        std::sort(array.begin(), array.end());
     B(array, 0, 1, world_size);
 
     double t1 = timer();
 
-    //print(array);
+//    print(array);
 
     int max_tacts;
     MPI_Reduce(&tacts_count, &max_tacts, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
