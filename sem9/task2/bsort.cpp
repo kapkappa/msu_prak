@@ -17,55 +17,53 @@ int rank, world_size;
 int tacts_count = 0;
 bool reverse = false;
 
-template <typename T>
-void SSS(std::vector<T>& array1, std::vector<T>& array2, std::vector<T>& array_all) {
-    int i = 0, j = 0, k = 0;
-
-    while (i < array1.size() && j < array2.size()) {
-        if (reverse ? array1[i] > array2[j] : array1[i] < array2[j]) {
-            array_all[k++] = array1[i++];
-        } else {
-            array_all[k++] = array2[j++];
-        }
-    }
-    while (i < array1.size()) {
-        array_all[k++] = array1[i++];
-    }
-    while (j < array2.size()) {
-        array_all[k++] = array2[j++];
-    }
-}
-
 
 template <typename T>
 void SS(std::vector<T>& array, int pos1, int pos2) {
     if (rank != pos1 && rank != pos2) return;
 
-    auto arr_size = array.size();
-
+    size_t arr_size = array.size();
     int recv_tacts;
-    if (rank == pos2) {
-        MPI_Send(array.data(), arr_size * sizeof(T), MPI_BYTE, pos1, 0, MPI_COMM_WORLD);
-        MPI_Send(&tacts_count, 1, MPI_INT, pos1, 0, MPI_COMM_WORLD);
-        MPI_Recv(array.data(), arr_size * sizeof(T), MPI_BYTE, pos1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        MPI_Recv(&recv_tacts, 1, MPI_INT, pos1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        tacts_count = std::max(tacts_count, recv_tacts) + 1;
-        return;
+    std::vector<T> recv_array(arr_size);
+    std::vector<T> result_array(arr_size);
+
+    int par;
+    if (rank == pos1) {
+        par = pos2;
+    } else {
+        par = pos1;
     }
 
-    std::vector<T> array2(arr_size);
-    MPI_Recv(array2.data(), arr_size * sizeof(T), MPI_BYTE, pos2, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-    MPI_Recv(&recv_tacts, 1, MPI_INT, pos2, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    MPI_Sendrecv(&tacts_count, 1, MPI_INT, par, 0,
+                 &recv_tacts, 1, MPI_INT, par, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
-    std::vector<T> array_all(2 * arr_size);
-    SSS<T>(array, array2, array_all);
-    MPI_Send(array_all.data() + arr_size, arr_size * sizeof(T), MPI_BYTE, pos2, 0, MPI_COMM_WORLD);
-    MPI_Send(&tacts_count, 1, MPI_INT, pos2, 0, MPI_COMM_WORLD);
     tacts_count = std::max(tacts_count, recv_tacts) + 1;
 
-    for (int i = 0; i < arr_size; i++) {
-        array[i] = array_all[i];
+    MPI_Sendrecv(array.data(), arr_size, MPI_DOUBLE, par, 1,
+                 recv_array.data(), arr_size, MPI_DOUBLE, par, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+    if (rank == pos2) {
+        for (int i = arr_size - 1, j = arr_size - 1, k = arr_size - 1; k >= 0;) {
+            if (reverse ? array[i] < recv_array[j] : array[i] > recv_array[j]) {
+                result_array[k--] = array[i--];
+            } else {
+                result_array[k--] = recv_array[j--];
+            }
+        }
+    } else {
+        for (int i = 0, j = 0, k = 0; k < arr_size;) {
+            if (reverse ? array[i] > recv_array[j] : array[i] < recv_array[j]) {
+                result_array[k++] = array[i++];
+            } else {
+                result_array[k++] = recv_array[j++];
+            }
+        }
     }
+
+    for (int i = 0; i < arr_size; i++)
+        array[i] = result_array[i];
+
+    return;
 }
 
 
@@ -115,6 +113,7 @@ void B(std::vector<T>& array, int first, int step, int count) {
     S<T>(array, first, first + mid, step, mid, count - mid);
 }
 
+
 template <typename T>
 void print(const std::vector<T>& array) {
     for (int i = 0; i < world_size; i++) {
@@ -127,6 +126,7 @@ void print(const std::vector<T>& array) {
         MPI_Barrier(MPI_COMM_WORLD);
     }
 }
+
 
 int main(int argc, char** argv) {
     if (argc != 3) {
