@@ -51,7 +51,7 @@ void SS(std::vector<T>& array, int pos1, int pos2) {
             }
         }
     } else {
-        for (int i = 0, j = 0, k = 0; k < arr_size;) {
+        for (size_t i = 0, j = 0, k = 0; k < arr_size;) {
             if (reverse ? array[i] > recv_array[j] : array[i] < recv_array[j]) {
                 result_array[k++] = array[i++];
             } else {
@@ -60,7 +60,7 @@ void SS(std::vector<T>& array, int pos1, int pos2) {
         }
     }
 
-    for (int i = 0; i < arr_size; i++)
+    for (size_t i = 0; i < arr_size; i++)
         array[i] = result_array[i];
 
     return;
@@ -127,6 +127,40 @@ void print(const std::vector<T>& array) {
     }
 }
 
+bool is_sorted(const std::vector<double>& array, bool reverse) {
+    for (size_t i = 1; i < array.size(); i++) {
+        if (reverse) {
+            if (array[i-1] < array[i])
+                return false;
+        } else {
+            if (array[i-1] > array[i])
+                return false;
+        }
+    }
+    return true;
+}
+
+bool check(const std::vector<double>& local_array, bool reverse) {
+    if (!is_sorted(local_array, reverse))
+        return false;
+
+    double first = local_array.front();
+    double last = local_array.back();
+
+    std::vector<double> buf(world_size, 0);
+    std::vector<double> array(world_size * 2, 0);
+    MPI_Gather(&first, 1, MPI_DOUBLE, buf.data(), 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+    for (int i = 0; i < world_size; i++)
+        array[i*2] = buf[i];
+
+    MPI_Gather(&last, 1, MPI_DOUBLE, buf.data(), 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+    for (int i = 0; i < world_size; i++)
+        array[i*2+1] = buf[i];
+
+    return is_sorted(array, reverse);
+}
 
 int main(int argc, char** argv) {
     if (argc != 3) {
@@ -172,6 +206,10 @@ int main(int argc, char** argv) {
 
     int max_tacts;
     MPI_Reduce(&tacts_count, &max_tacts, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+
+    if (!check(array, reverse)) {
+        std::cout << "ERROR, NOT SORTED!" << std::endl;
+    }
 
     if (!rank) {
         std::cout << "tacts: " << max_tacts << std::endl;
