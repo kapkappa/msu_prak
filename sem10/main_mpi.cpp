@@ -1,3 +1,4 @@
+#include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
 #include <error.h>
@@ -194,7 +195,10 @@ int main(int argc, char **argv)
         }
 
         //FIXME: timings
-        //sssp(g.roots[i], &g, local_dist, &sssp_edges);
+        double t1 = MPI_Wtime();
+        sssp(g.roots[i], &g, local_dist, &sssp_edges);
+        double t2 = MPI_Wtime();
+        std::cout << t2 - t1 << std::endl;
 
         calc_traversed_edges(&g, local_dist, &traversed_edges);
 

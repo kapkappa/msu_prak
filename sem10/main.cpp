@@ -74,6 +74,12 @@ void readGraph(graph_t *G, char *filename)
     G->scale = log(G->n) / log (2);   
     objects_read =  fread(&arity, sizeof(edge_id_t), 1, F);
     assert(objects_read == 1);
+
+    vertex_id_t tmp_n;
+    fread(&tmp_n, sizeof(vertex_id_t), 1, F);
+    edge_id_t tmp_m;
+    fread(&tmp_m, sizeof(edge_id_t), 1, F);
+
     objects_read =  fread(&G->directed, sizeof(bool), 1, F);
     assert(objects_read == 1);
     objects_read =  fread(&align, sizeof(uint8_t), 1, F);

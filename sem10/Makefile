@@ -1,10 +1,10 @@
 CC=g++
 CXX=g++
 MPICXX=mpicxx
-CXXFLAGS=-O3 -Wall -g
+CXXFLAGS=-O3 -Wall -g -std=c++2a
 LDFLAGS=-lm -lrt
 
-all: compare gen_RMAT graphs_reference gen_RMAT_mpi gen_random gen_random_mpi
+all: compare gen_RMAT graphs_reference gen_RMAT_mpi gen_random gen_random_mpi sssp
 
 gen_RMAT_serial: gen_RMAT.o
 	$(CXX) $^ -o $@ $(LDFLAGS)
@@ -22,8 +22,8 @@ graphs_reference: main.o sssp_serial_reference.o
 	$(CXX) $^ -o $@ $(LDFLAGS)
 
 # write your own file
-sssp: main_mpi.o sssp.o
-	$(CXX) $^ -o $@ $(LDFLAGS)
+sssp: main_mpi.cpp sssp.cpp
+	$(MPICXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
 
 compare: compare.o
 	$(CXX) $^ -o $@
