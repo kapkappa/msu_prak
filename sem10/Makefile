@@ -1,8 +1,19 @@
 CC=g++
 CXX=g++
 MPICXX=mpicxx
-CXXFLAGS=-O3 -Wall -g -std=c++2a
+CXXFLAGS=-O3 -Wall -g -std=c++2a #-Wextra
 LDFLAGS=-lm -lrt
+
+BUILD ?= Release
+MACHINE ?= Desktop
+
+ifeq ($(BUILD), Debug)
+CXXFLAGS += -DDEBUG
+endif
+
+ifeq ($(MACHINE), Polus)
+MPICXX=g++ -I/polusfs/OpenMPI/RHEL-7.4/2.1.3/include -Wl,-rpath -Wl,/polusfs/OpenMPI/RHEL-7.4/2.1.3/lib -Wl,--enable-new-dtags -L/polusfs/OpenMPI/RHEL-7.4/2.1.3/lib -lmpi
+endif
 
 all: compare gen_random_serial gen_random_mpi gen_RMAT_serial gen_RMAT_mpi sssp_serial sssp_mpi
 
@@ -21,10 +32,10 @@ gen_RMAT_serial: gen_RMAT.o graph.o
 gen_RMAT_mpi: gen_RMAT_mpi.cpp graph.cpp
 	$(MPICXX) $(CXXFLAGS) $^ -o $@ -lrt
 
-sssp_serial: main.o sssp_serial_reference.o graph.o
+sssp_serial: main.o sssp.o graph.o
 	$(CXX) $^ -o $@ $(LDFLAGS)
 
-sssp_mpi: main_mpi.cpp sssp.cpp graph.cpp
+sssp_mpi: main_mpi.cpp sssp_mpi.cpp graph.cpp
 	$(MPICXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
 
 .cpp.o:

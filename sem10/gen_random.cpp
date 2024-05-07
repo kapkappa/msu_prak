@@ -9,7 +9,7 @@
 
 using namespace std;
 
-char outFilename[FNAME_LEN];
+char outFilename[FNAME_LEN] = {0};
 
 /* helper */
 void usage(int argc, char **argv)
@@ -52,8 +52,7 @@ void init(int argc, char **argv, graph_t *G)
             G->nRoots = (uint32_t) atoi(argv[++i]);
         }
 		if (!strcmp(argv[i], "-out")) {
-            int l = strlen(argv[++i]);
-            strncpy(outFilename, argv[i], (l > FNAME_LEN-1 ? FNAME_LEN-1 : l) );
+            strncpy(outFilename, argv[++i], FNAME_LEN-1);
             no_out_filename = false;
         }
     }
@@ -76,7 +75,7 @@ void init(int argc, char **argv, graph_t *G)
     assert(G->roots);
     G->numTraversedEdges = (edge_id_t *)malloc(G->nRoots * sizeof(edge_id_t));
     assert(G->numTraversedEdges);
-    for (int i = 0; i < G->nRoots; ++i) {
+    for (uint32_t i = 0; i < G->nRoots; ++i) {
         G->roots[i] = i; /* can be any index, but let it be i */
         G->numTraversedEdges[i] = 0; /* filled by sssp */
     }
@@ -205,7 +204,9 @@ int main(int argc, char **argv) {
     graph_t g;
     init(argc, argv, &g);
     gen_random_graph(&g);
+#ifdef DEBUG
     g.printGraph();
+#endif
     g.writeGraph(outFilename);
     return 0;
 }

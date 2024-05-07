@@ -6,6 +6,8 @@
 #define SMALL_COMPONENT_EDGES_THRESHOLD   2
 #define FNAME_LEN   256
 
+#define START_BUF_LEN 128
+
 typedef uint32_t vertex_id_t;
 typedef uint64_t edge_id_t;
 typedef double weight_t;
@@ -20,4 +22,4 @@ extern int lgsize; /* log2 (number of processes) */
 /* macroses for obtaining vertices distribution between nodes */
 #define VERTEX_OWNER(v) ((int)(MOD_SIZE(v)))
 #define VERTEX_LOCAL(v) ((vertex_id_t)(DIV_SIZE(v)))
-#define VERTEX_TO_GLOBAL(r, i) ((vertex_id_t)(MUL_SIZE((vertex_id_t)i) + (int)(r)))
+#define VERTEX_TO_GLOBAL(i, r) ((vertex_id_t)(MUL_SIZE((vertex_id_t)i) + (int)(r)))

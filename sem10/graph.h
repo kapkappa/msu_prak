@@ -21,9 +21,8 @@
 //extern int lgsize;
 
 class graph_t {
-private:
-    int lgsize;
 public:
+//    int lgsize;
     int scale; /* log2 of vertices number */
     vertex_id_t n_V;
     edge_id_t n_E;
@@ -67,6 +66,7 @@ public:
 
     /* read graph from file */
     int readGraph(char *filename);
+    int parallelReadGraph(char *filename, int nfiles);
     int writeGraph(char *filename);
     void printGraph();
 };

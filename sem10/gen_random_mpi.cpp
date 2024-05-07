@@ -343,7 +343,9 @@ int main(int argc, char **argv) {
     int err;
     for (int i = 0; i < size; ++i) {
         if (rank == i) {
-            g.printGraph();
+            #ifdef DEBUG
+                g.printGraph();
+            #endif
             if ((err = g.writeGraph(outFilename))) {
                 std::cout << "write graph error: " << err << std::endl;
                 MPI_Finalize();
@@ -355,6 +357,5 @@ int main(int argc, char **argv) {
 
     MPI_Finalize();
 
-    std::cout << "The end!\n";
     return 0;
 }

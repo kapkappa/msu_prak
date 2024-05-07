@@ -327,6 +327,7 @@ void gen_RMAT_graph_MPI(graph_t* G)
     /* saving new value for local_m */
     local_m = counts;
     G->local_n_E = local_m;
+    G->n_E *= 2;
     free(send_edges);
     free(recv_offsets_edge);
     free(send_offsets_edge);
@@ -404,6 +405,16 @@ void init (int argc, char** argv, graph_t* G) {
 	if (G->scale == -1) usage(argc, argv);
     G->n_V = (vertex_id_t)1 << G->scale;
     G->n_E = G->n_V * G->avg_vertex_degree;
+
+    G->roots = (vertex_id_t *)malloc(G->nRoots * sizeof(vertex_id_t));
+    assert(G->roots);
+    G->numTraversedEdges = (edge_id_t *)malloc(G->nRoots * sizeof(edge_id_t));
+    assert(G->numTraversedEdges);
+    for (uint32_t i = 0; i < G->nRoots; ++i) {
+        G->roots[i] = i; /* can be any index, but let it be i */
+        G->numTraversedEdges[i] = 0; /* filled by sssp */
+    }
+
     sprintf(outFilename, "rmat-%d.%d", G->scale, G->rank);
 }
 
@@ -424,7 +435,9 @@ int main(int argc, char **argv) {
 
     for(int i = 0; i < size; ++i) {
         if (rank == i) {
-            g.printGraph();
+            #ifdef DEBUG
+                g.printGraph();
+            #endif
             if ((err = g.writeGraph(outFilename))) {
                 std::cout << "write graph error: " << err << std::endl;
                 MPI_Finalize();

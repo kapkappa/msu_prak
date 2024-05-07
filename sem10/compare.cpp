@@ -37,8 +37,8 @@ int main(int argc, char** argv)
             break;
         }
 		if( abs( x1 - x2 ) / max( abs( x1 ), abs( x2 ) ) > eps ) {
+        	cout << x1 << " " << x2 << endl;
 			++nErrs;
-			cout << x1 << " " << x2 << endl;
 		}
         norm = max( norm, abs( x1 - x2 ) );
 	}

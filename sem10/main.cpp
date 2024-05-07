@@ -12,6 +12,7 @@ char* inFilename;
 char* outFilename;
 uint32_t rootNumberToValidate;
 uint32_t nIters;
+int nFiles;
 
 #if defined(CLOCK_MONOTONIC)
 #define CLOCK CLOCK_MONOTONIC
@@ -34,6 +35,7 @@ void usage(int argc, char **argv)
     printf("    -out <output> -- output filename. Default output is '<input>.v'\n");
     printf("    -root <root> -- root number for validation. Default is the first vertex\n");
     printf("    -nIters <nIters> -- number of iterations\n");
+    printf("    -nFiles <nFiles> -- number of files for parallel reading\n");
     exit(1);
 }
 
@@ -41,6 +43,7 @@ void init (int argc, char** argv)
 {
     inFilename = outFilename = NULL;
     nIters = 1;
+    nFiles = 1;
     rootNumberToValidate = 0;
     for (int i = 1; i < argc; ++i) {
    		if (!strcmp(argv[i], "-in")) {
@@ -55,6 +58,9 @@ void init (int argc, char** argv)
 		if (!strcmp(argv[i], "-nIters")) {
 			nIters = (int) atoi(argv[++i]);
         }
+		if (!strcmp(argv[i], "-nFiles")) {
+			nFiles = (int) atoi(argv[++i]);
+        }
     }
     if (!inFilename) usage(argc, argv);
     if (!outFilename) {
@@ -66,6 +72,12 @@ void init (int argc, char** argv)
 /* write distances from root vertex to each others to output file. -1 = infinity */
 void writeDistance(char* filename, weight_t *dist, vertex_id_t n)
 {
+#ifdef DEBUG
+    std::cout << "Distances:";
+    for (vertex_id_t i = 0; i < n; i++)
+        std::cout << ' ' << dist[i];
+    std::cout << std::endl;
+#endif
     FILE *F = fopen(filename, "wb");
     assert(fwrite(dist, sizeof(weight_t), n, F) == n);
     fclose(F);
@@ -91,10 +103,20 @@ int main(int argc, char **argv)
     /* initializing and reading the graph */
     init(argc, argv);
 
-    if ((err = g.readGraph(inFilename))) {
-        std::cout << "readGraph returned error " << err << std::endl;
-        exit(1);
+    if (nFiles > 1) {
+        if ((err = g.parallelReadGraph(inFilename, nFiles))) {
+            std::cout << "parallelReadGraph returned error " << err << std::endl;
+            exit(1);
+        }
+    } else {
+        if ((err = g.readGraph(inFilename))) {
+            std::cout << "readGraph returned error " << err << std::endl;
+            exit(1);
+        }
     }
+
+//    g.printGraph();
+
     init_sssp(&g);
     dist = (weight_t *)malloc(g.n_V * sizeof(weight_t));
 
@@ -119,7 +141,7 @@ int main(int argc, char **argv)
 
         g.numTraversedEdges[i] = static_cast<edge_id_t>(nedges);
         perf[i] = g.numTraversedEdges[i] / (1000000 * time);
-        //printf("%d: numTraversedEdges = %ld, time = %.4f s, perf = %.4f MTEPS\n", i, g.numTraversedEdges[i], time, perf[i] );
+        printf("%d: numTraversedEdges = %ld, time = %f s, perf = %.4f MTEPS\n", i, g.numTraversedEdges[i], time, perf[i] );
 
         if (rootNumberToValidate == i) {
             /* writing for validation */
