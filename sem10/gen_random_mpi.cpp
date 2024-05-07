@@ -1,12 +1,11 @@
 #include <iostream>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstring>
+#include <cassert>
+#include <error.h>
+
+#include "graph.h"
 #include "defs.h"
 #include "mpi.h"
-#include <assert.h>
-#include <math.h>
-#include <error.h>
 
 using namespace std;
 
@@ -16,7 +15,7 @@ char outFilename[FNAME_LEN];
 /* function returns size of edges block for current process */
 static edge_id_t get_local_m(graph_t *G)
 {
-    return G->local_n * G->avg_vertex_degree;
+    return G->local_n_V * G->avg_vertex_degree;
 }
 
 static unsigned long long my_next = 1;
@@ -78,7 +77,7 @@ void gen_random_graph_MPI(int argc, char** argv, graph_t *G) {
     assert(G->roots);
     G->numTraversedEdges = (edge_id_t *)malloc(G->nRoots * sizeof(edge_id_t));
     assert(G->numTraversedEdges);
-    for (int i = 0; i < G->nRoots; ++i) {
+    for (uint32_t i = 0; i < G->nRoots; ++i) {
         G->roots[i] = i; /* can be any index, but let it be i */
         G->numTraversedEdges[i] = 0; /* filled by sssp */
     }
@@ -93,12 +92,12 @@ void gen_random_graph_MPI(int argc, char** argv, graph_t *G) {
     vertex_id_t *edges;
     vertex_id_t *degree;
     int size, rank, lgsize;
-    G->n = (vertex_id_t)1 << G->scale;
-    G->m = G->n * (edge_id_t)G->avg_vertex_degree;
+    G->n_V = (vertex_id_t)1 << G->scale;
+    G->n_E = G->n_V * (edge_id_t)G->avg_vertex_degree;
     permute_vertices = G->permute_vertices;
-    n = G->n;
-    unsigned TotVertices;
-    TotVertices = G->n;
+    n = G->n_V;
+//    unsigned TotVertices;
+//    TotVertices = G->n_V;
 
     weight_t *weight;
     weight_t min_weight, max_weight;
@@ -116,11 +115,11 @@ void gen_random_graph_MPI(int argc, char** argv, graph_t *G) {
     }
     /* get size of vertices and edges blocks for current processes */
     local_n = n/size;
-    G->local_n = local_n;
+    G->local_n_V = local_n;
     local_m = get_local_m(G);
     num_dir_edges = local_m;
     local_m = 2 * local_m;
-    G->local_m = local_m;
+    G->local_n_E = local_m;
 
     weight = (weight_t *) malloc(num_dir_edges * sizeof(weight_t));
     assert(weight != NULL);
@@ -198,9 +197,9 @@ void gen_random_graph_MPI(int argc, char** argv, graph_t *G) {
 
     /* calc count of data in each process */
     for (edge_id_t i = 0; i < num_dir_edges; i++) {
-        int proc_id = VERTEX_OWNER(edges[2 * i + 0], TotVertices, size);
+        int proc_id = VERTEX_OWNER(edges[2 * i + 0]/*, TotVertices, size*/);
         send_counts[proc_id]++;
-        proc_id = VERTEX_OWNER(edges[2 * i + 1], TotVertices, size);
+        proc_id = VERTEX_OWNER(edges[2 * i + 1]/*, TotVertices, size*/);
         send_counts[proc_id]++;
     }
 
@@ -217,14 +216,14 @@ void gen_random_graph_MPI(int argc, char** argv, graph_t *G) {
 
     /* copy edges to send_data */
     for (edge_id_t i = 0; i < num_dir_edges; i++) {
-        int proc_id = VERTEX_OWNER(edges[2 * i + 0], TotVertices, size);
+        int proc_id = VERTEX_OWNER(edges[2 * i + 0]/*, TotVertices, size*/);
         offset = send_offsets_edge[proc_id] + 2 * send_counts[proc_id];
         send_edges[offset + 0] = edges[2 * i + 0];
         send_edges[offset + 1] = edges[2 * i + 1];
         offset = send_offsets_weight[proc_id] + send_counts[proc_id];
         send_weight[offset] = weight[i];
         send_counts[proc_id]++;
-        proc_id = VERTEX_OWNER(edges[2 * i + 1], TotVertices, size);
+        proc_id = VERTEX_OWNER(edges[2 * i + 1]/*, TotVertices, size*/);
         offset = send_offsets_edge[proc_id] + 2 * send_counts[proc_id];
         send_edges[offset + 0] = edges[2 * i + 1];
         send_edges[offset + 1] = edges[2 * i + 0];
@@ -288,37 +287,37 @@ void gen_random_graph_MPI(int argc, char** argv, graph_t *G) {
     MPI_Waitall(size, request, status);
     /* saving new value for local_m */
     local_m = counts;
-    G->local_m = local_m;
+    G->local_n_E = local_m;
     /* undirected graph, each edge is stored twice; if edge is (u, v), then it's
      *stored at the vertex u and at the vertex v */
-    G->m *= 2;
+    G->n_E *= 2;
     delete[] send_edges;
     delete[] recv_offsets_edge;
     delete[] send_offsets_edge;
     delete[] recv_counts;
     delete[] send_counts;
 
-    for (edge_id_t i = 0; i < 2 * G->local_m; i += 2) {
-        degree[VERTEX_LOCAL(recv_edges[i], TotVertices, size, rank)]++;
+    for (edge_id_t i = 0; i < 2 * G->local_n_E; i += 2) {
+        degree[VERTEX_LOCAL(recv_edges[i]/*, TotVertices, size, rank*/)]++;
     }
 
     /* update graph data structure */
-    G->endV = new vertex_id_t[G->local_m];
+    G->endV = (vertex_id_t*)malloc(G->local_n_E * sizeof(vertex_id_t));
     assert(G->endV != NULL);
-    memset(G->endV, 0, sizeof(vertex_id_t) * G->local_m);
-    G->rowsIndices = new edge_id_t[local_n + 1];
+    memset(G->endV, 0, sizeof(vertex_id_t) * G->local_n_E);
+    G->rowsIndices = (edge_id_t*)malloc((local_n+1) * sizeof(edge_id_t));
     assert(G->rowsIndices != NULL);
 
-    G->weights = (weight_t *) malloc(G->local_m * sizeof(weight_t));
+    G->weights = (weight_t *) malloc(G->local_n_E * sizeof(weight_t));
     assert(G->weights != NULL);
 
     G->rowsIndices[0] = 0;
-    for (vertex_id_t i = 1; i <= G->local_n; i++) {
+    for (vertex_id_t i = 1; i <= G->local_n_V; i++) {
         G->rowsIndices[i] = G->rowsIndices[i - 1] + degree[i - 1];
     }
 
-    for (edge_id_t i = 0; i < 2 * G->local_m; i += 2) {
-        u = VERTEX_LOCAL(recv_edges[i + 0], TotVertices, size, rank);
+    for (edge_id_t i = 0; i < 2 * G->local_n_E; i += 2) {
+        u = VERTEX_LOCAL(recv_edges[i + 0]/*, TotVertices, size, rank*/);
         v = recv_edges[i + 1];
         offset = degree[u]--;
         G->endV[G->rowsIndices[u] + offset - 1] = v;
@@ -331,70 +330,6 @@ void gen_random_graph_MPI(int argc, char** argv, graph_t *G) {
 
 }
 
-/* write graph to file */
-void writeGraph(graph_t *G, char *filename) {
-    MPI_Comm_size(MPI_COMM_WORLD, &G->nproc);
-    MPI_Comm_rank(MPI_COMM_WORLD, &G->rank);
-
-    // FILE *F = fopen(filename, "a+b");
-    FILE *F = fopen(filename, "wb");
-    if (!F) error(EXIT_FAILURE, 0, "Error in opening file %s", filename);
-	size_t objects_written = 0;
-
-    objects_written = fwrite(&G->n, sizeof(vertex_id_t), 1, F);
-    assert(objects_written == 1);
-    edge_id_t arity = G->m / G->n;
-    objects_written = fwrite(&arity, sizeof(edge_id_t), 1, F);
-    assert(objects_written ==  1);
-
-    objects_written = fwrite(&G->local_n, sizeof(vertex_id_t), 1, F);
-    assert(objects_written == 1);
-    objects_written = fwrite(&G->local_m, sizeof(edge_id_t), 1, F);
-    assert(objects_written == 1);
-
-    objects_written = fwrite(&G->directed, sizeof(bool), 1, F);
-    assert(objects_written == 1);
-    uint8_t align = 0;
-    objects_written = fwrite(&align, sizeof(uint8_t), 1, F);
-    assert(objects_written == 1);
-
-    objects_written = fwrite(G->rowsIndices, sizeof(edge_id_t), G->local_n+1, F);
-    assert(objects_written == G->local_n+1);
-    objects_written = fwrite(G->endV, sizeof(vertex_id_t), G->rowsIndices[G->local_n], F);
-    assert(objects_written == G->rowsIndices[G->local_n]);
-
-    objects_written = fwrite(&G->nRoots, sizeof(uint32_t), 1, F);
-    assert(objects_written == 1);
-    objects_written = fwrite(G->roots, sizeof(vertex_id_t), G->nRoots, F);
-    assert(objects_written == G->nRoots);
-    objects_written = fwrite(G->numTraversedEdges, sizeof(edge_id_t), G->nRoots, F);
-    assert(objects_written == G->nRoots);
-
-    objects_written = fwrite(G->weights, sizeof(weight_t), G->local_m, F);
-    assert(objects_written == G->local_m);
-    fclose(F);
-}
-
-void printGraph(graph_t *G)
-{
-	int i,j;
-	for (i = 0; i < (int)G->local_n; ++i) {
-		printf("%d:", i);
-		for (j=G->rowsIndices[i]; j < (int)G->rowsIndices[i+1]; ++j)
-			printf("%d (%f), ", G->endV[j], G->weights[j]);
-		printf("\n");
-	}
-}
-
-void freeGraph(graph_t *G) {
-    delete[] G->rowsIndices;
-    delete[] G->endV;
-    free(G->weights);
-    free(G->roots);
-    free(G->numTraversedEdges);
-}
-
-
 int main(int argc, char **argv) {
     MPI_Init (&argc, &argv);
     graph_t g;
@@ -405,11 +340,15 @@ int main(int argc, char **argv) {
 
     gen_random_graph_MPI(argc, argv, &g);
 
+    int err;
     for (int i = 0; i < size; ++i) {
         if (rank == i) {
-            printGraph(&g);
-            writeGraph(&g, outFilename);
-            freeGraph(&g);
+            g.printGraph();
+            if ((err = g.writeGraph(outFilename))) {
+                std::cout << "write graph error: " << err << std::endl;
+                MPI_Finalize();
+                exit(1);
+            }
         }
         MPI_Barrier(MPI_COMM_WORLD);
     }

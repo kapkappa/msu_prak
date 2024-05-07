@@ -1,17 +1,15 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <assert.h>
-#include <math.h>
+#include <iostream>
+#include <cstring>
+#include <cassert>
+#include <climits>
 #include <error.h>
-#include "mpi.h"
-#include <limits.h>
-#include "defs.h"
 
-#include<iostream>
+#include "mpi.h"
+#include "defs.h"
+#include "graph.h"
+
 using namespace std;
 
-#define FNAME_LEN   256
 char outFilename[FNAME_LEN];
 
 bool writeTextFile = false;
@@ -19,7 +17,7 @@ bool writeTextFile = false;
 /* function returns size of edges block for current process */
 edge_id_t get_local_m(graph_t *G)
 {
-    edge_id_t m = G->m;
+    edge_id_t m = G->n_E;
     edge_id_t local_m;
     int nproc = G->nproc;
     int rank = G->rank;
@@ -95,8 +93,8 @@ void gen_RMAT_graph_MPI(graph_t* G)
     G->min_weight = 0;
     G->max_weight = 1;
     G->avg_vertex_degree = DEFAULT_ARITY;
-    G->n = (vertex_id_t)1 << G->scale;
-    G->m = G->n * (edge_id_t)G->avg_vertex_degree;    
+    G->n_V = (vertex_id_t)1 << G->scale;
+    G->n_E = G->n_V * (edge_id_t)G->avg_vertex_degree;    
 
     a = G->a;
     b = G->b;
@@ -107,9 +105,9 @@ void gen_RMAT_graph_MPI(graph_t* G)
     permute_vertices = G->permute_vertices;
 
     undirected = !G->directed;
-    n = G->n;
-    uint32_t TotVertices;
-    TotVertices = G->n;
+    n = G->n_V;
+//    uint32_t TotVertices;
+//    TotVertices = G->n_V;
 
     MPI_Datatype MPI_VERTEX_ID_T;
     MPI_Type_contiguous(sizeof(vertex_id_t), MPI_BYTE, &MPI_VERTEX_ID_T);
@@ -125,8 +123,8 @@ void gen_RMAT_graph_MPI(graph_t* G)
     local_n = n/size;
     num_dir_edges = local_m;
     if (undirected) local_m = 2*local_m;
-    G->local_n = local_n;
-    G->local_m = local_m;
+    G->local_n_V = local_n;
+    G->local_n_E = local_m;
     edges = (vertex_id_t *) malloc (2 /* one edge consists of two vertex */ *num_dir_edges * sizeof(vertex_id_t)); 
     degree = (vertex_id_t *) calloc(local_n, sizeof(vertex_id_t));
     assert(edges != NULL);
@@ -228,7 +226,7 @@ void gen_RMAT_graph_MPI(graph_t* G)
     assert(recv_offsets_weight != NULL);
     /* calc count of data in each process */
     for (edge_id_t i=0; i<num_dir_edges; i++) {
-        int proc_id = VERTEX_OWNER(edges[2*i+0], TotVertices, size);
+        int proc_id = VERTEX_OWNER(edges[2*i+0]/*, TotVertices, size*/);
         if (send_counts[proc_id] == INT_MAX / 2) {
             printf("send_counts (number of edges for sending ) > MAX_INT \n");
             MPI_Finalize();
@@ -236,7 +234,7 @@ void gen_RMAT_graph_MPI(graph_t* G)
         }
 	    send_counts[proc_id]++;
         if (undirected) {
-            int proc_id = VERTEX_OWNER(edges[2*i+1], TotVertices, size);
+            int proc_id = VERTEX_OWNER(edges[2*i+1]/*, TotVertices, size*/);
             if (send_counts[proc_id] == INT_MAX / 2) {
                 printf("send_counts (number of edges for sending ) > MAX_INT \n");
                 MPI_Finalize();
@@ -256,21 +254,21 @@ void gen_RMAT_graph_MPI(graph_t* G)
     }
     /* copy edges and weight to send_data */
     for (edge_id_t i=0; i<num_dir_edges; i++) {
-	    int proc_id = VERTEX_OWNER(edges[2*i+0], TotVertices, size);
+	    int proc_id = VERTEX_OWNER(edges[2*i+0]/*, TotVertices, size*/);
         offset = send_offsets_edge[proc_id] + 2 * send_counts[proc_id];
-	    send_edges[offset + 0] = VERTEX_LOCAL(edges[2*i+0], TotVertices, size, rank);
+	    send_edges[offset + 0] = VERTEX_LOCAL(edges[2*i+0]/*, TotVertices, size, rank*/);
 	    send_edges[offset + 1] = edges[2*i+1];
         offset = send_offsets_weight[proc_id] + send_counts[proc_id];
         send_weight[offset] = weight[i];
         send_counts[proc_id]++;
         if (undirected) {
-            int proc_id = VERTEX_OWNER(edges[2*i+1], TotVertices, size);
+            int proc_id = VERTEX_OWNER(edges[2*i+1]/*, TotVertices, size*/);
             offset = send_offsets_edge[proc_id] + 2 * send_counts[proc_id];
-            send_edges[offset + 0] = VERTEX_LOCAL(edges[2*i+1], TotVertices, size, rank);
+            send_edges[offset + 0] = VERTEX_LOCAL(edges[2*i+1]/*, TotVertices, size, rank*/);
             send_edges[offset + 1] = edges[2*i+0];
             offset = send_offsets_weight[proc_id] + send_counts[proc_id];
             send_weight[offset] = weight[i];
-            send_counts[proc_id]++;        
+            send_counts[proc_id]++;
         }
     }
     free(edges);
@@ -328,30 +326,30 @@ void gen_RMAT_graph_MPI(graph_t* G)
 
     /* saving new value for local_m */
     local_m = counts;
-    G->local_m = local_m;
+    G->local_n_E = local_m;
     free(send_edges);
     free(recv_offsets_edge);
     free(send_offsets_edge);
     free(recv_counts);
     free(send_counts);
 
-    for (edge_id_t i=0; i<2*G->local_m; i=i+2) {
+    for (edge_id_t i=0; i<2*G->local_n_E; i=i+2) {
         degree[recv_edges[i]]++;
     }
     /* Update graph data structure */
-    G->endV = (vertex_id_t *) calloc(G->local_m, sizeof(vertex_id_t));
+    G->endV = (vertex_id_t *) calloc(G->local_n_E, sizeof(vertex_id_t));
     assert(G->endV != NULL);
     G->rowsIndices = (edge_id_t *) malloc((local_n+1)*sizeof(edge_id_t));
     assert(G->rowsIndices != NULL);
 
-    G->weights = (weight_t *) malloc(G->local_m * sizeof(weight_t));       
+    G->weights = (weight_t *) malloc(G->local_n_E * sizeof(weight_t));       
     assert(G->weights != NULL);
-    G->rowsIndices[0] = 0; 
-    for (vertex_id_t i=1; i<=G->local_n; i++) {
+    G->rowsIndices[0] = 0;
+    for (vertex_id_t i=1; i<=G->local_n_V; i++) {
 	    G->rowsIndices[i] = G->rowsIndices[i-1] + degree[i-1];
     }
 
-    for (edge_id_t i=0; i<2*G->local_m; i=i+2) {
+    for (edge_id_t i=0; i<2*G->local_n_E; i=i+2) {
 	    u = recv_edges[i+0];
 	    v = recv_edges[i+1];
 	    offset = degree[u]--;
@@ -364,7 +362,7 @@ void gen_RMAT_graph_MPI(graph_t* G)
     free(recv_weight);
 }
 
-void usage(int argc, char **argv) 
+void usage(int argc, char **argv)
 {
 	printf("Usage:\n");
 	printf("    %s -s [options]\n", argv[0]);
@@ -404,90 +402,34 @@ void init (int argc, char** argv, graph_t* G) {
         }
     }
 	if (G->scale == -1) usage(argc, argv);
-    G->n = (vertex_id_t)1 << G->scale;
-    G->m = G->n * G->avg_vertex_degree;
+    G->n_V = (vertex_id_t)1 << G->scale;
+    G->n_E = G->n_V * G->avg_vertex_degree;
     sprintf(outFilename, "rmat-%d.%d", G->scale, G->rank);
-}
-
-void freeGraph(graph_t *G) {
-    free(G->rowsIndices);
-    free(G->endV);
-    free(G->roots);
-    free(G->weights);
-}
-
-/* write graph to file */
-void writeGraph(graph_t *G, char *filename) {
-    MPI_Comm_size(MPI_COMM_WORLD, &G->nproc);
-    MPI_Comm_rank(MPI_COMM_WORLD, &G->rank);
-
-    // FILE *F = fopen(filename, "a+b");
-    FILE *F = fopen(filename, "wb");
-    if (!F) error(EXIT_FAILURE, 0, "Error in opening file %s", filename);
-	size_t objects_written = 0;
-
-    objects_written = fwrite(&G->n, sizeof(vertex_id_t), 1, F);
-    assert(objects_written == 1);
-    edge_id_t arity = G->m / G->n;
-    objects_written = fwrite(&arity, sizeof(edge_id_t), 1, F);
-    assert(objects_written ==  1);
-
-    objects_written = fwrite(&G->local_n, sizeof(vertex_id_t), 1, F);
-    assert(objects_written == 1);
-    objects_written = fwrite(&G->local_m, sizeof(edge_id_t), 1, F);
-    assert(objects_written == 1);
-
-    objects_written = fwrite(&G->directed, sizeof(bool), 1, F);
-    assert(objects_written == 1);
-    uint8_t align = 0;
-    objects_written = fwrite(&align, sizeof(uint8_t), 1, F);
-    assert(objects_written == 1);
-
-    objects_written = fwrite(G->rowsIndices, sizeof(edge_id_t), G->local_n+1, F);
-    assert(objects_written == G->local_n+1);
-    objects_written = fwrite(G->endV, sizeof(vertex_id_t), G->rowsIndices[G->local_n], F);
-    assert(objects_written == G->rowsIndices[G->local_n]);
-
-    objects_written = fwrite(&G->nRoots, sizeof(uint32_t), 1, F);
-    assert(objects_written == 1);
-    objects_written = fwrite(G->roots, sizeof(vertex_id_t), G->nRoots, F);
-    assert(objects_written == G->nRoots);
-    objects_written = fwrite(G->numTraversedEdges, sizeof(edge_id_t), G->nRoots, F);
-    assert(objects_written == G->nRoots);
-
-    objects_written = fwrite(G->weights, sizeof(weight_t), G->local_m, F);
-    assert(objects_written == G->local_m);
-    fclose(F);
-}
-
-void printGraph(graph_t *G)
-{
-	int i,j;
-	for (i = 0; i < (int)G->local_n; ++i) {
-		printf("%d:", i);
-		for (j=G->rowsIndices[i]; j < (int)G->rowsIndices[i+1]; ++j)
-			printf("%d (%f), ", G->endV[j], G->weights[j]);
-		printf("\n");
-	}
 }
 
 int main(int argc, char **argv) {
 
-    MPI_Init (&argc, &argv);
+    MPI_Init(&argc, &argv);
     graph_t g;
 
     init(argc, argv, &g);
-    
+
     int rank, size;
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     gen_RMAT_graph_MPI(&g);
-    
+
+    int err;
+
     for(int i = 0; i < size; ++i) {
-        if(rank == i) {
-            //printGraph(&g);
-            writeGraph(&g, outFilename);
+        if (rank == i) {
+            g.printGraph();
+            if ((err = g.writeGraph(outFilename))) {
+                std::cout << "write graph error: " << err << std::endl;
+                MPI_Finalize();
+                exit(1);
+            }
         }
         MPI_Barrier(MPI_COMM_WORLD);
     }

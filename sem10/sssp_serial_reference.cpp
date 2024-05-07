@@ -1,29 +1,25 @@
 #include <iostream>
 #include <vector>
-#include <algorithm>
+
 #include "defs.h"
+#include "graph.h"
 
 using namespace std;
 
-extern "C" void init_sssp(graph_t *G)
-{
-}
+void init_sssp(graph_t *G) {}
 
-extern "C" void finalize_sssp()
-{
-}
+void finalize_sssp() {}
 
-/* Reference SSSP implementation --- Dijkstra algorithm 
+/* Reference SSSP implementation --- Dijkstra algorithm
  * it is needed to carefully count the number of traversed edges
  * dist must be initialized as -1
 */
-extern "C" void sssp(vertex_id_t root, graph_t *G, weight_t *dist, uint64_t *traversed_edges)
-{
+void sssp(vertex_id_t root, graph_t *G, weight_t *dist, uint64_t *traversed_edges) {
     /* (distance,node) */
-    vector< pair<weight_t, vertex_id_t> > pq(G->n);
+    vector< pair<weight_t, vertex_id_t> > pq(G->n_V);
     uint64_t nedges = 0;
-    pq.at(0) = make_pair(0, root); 
-    int len = 1; 
+    pq.at(0) = make_pair(0, root);
+    int len = 1;
     dist[root] = 0;
     while ( len ) {
         pair<weight_t, vertex_id_t> s = pq[0];
@@ -45,4 +41,3 @@ extern "C" void sssp(vertex_id_t root, graph_t *G, weight_t *dist, uint64_t *tra
     }
     *traversed_edges = nedges;
 }
-

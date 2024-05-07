@@ -1,9 +1,11 @@
-#include "defs.h"
 #include <stdio.h>
 #include <cstdlib>
 #include <assert.h>
 #include <string.h>
 #include <error.h>
+
+#include "defs.h"
+#include "graph.h"
 
 using namespace std;
 
@@ -64,8 +66,11 @@ void init(int argc, char **argv, graph_t *G)
         usage(argc, argv);
     }
 
-    G->n = (vertex_id_t)1 << G->scale;
-    G->m = G->n * G->avg_vertex_degree;
+    G->n_V = (vertex_id_t)1 << G->scale;
+    G->n_E = G->n_V * G->avg_vertex_degree;
+
+    G->local_n_V = G->n_V;
+    G->local_n_E = G->n_E;
 
     G->roots = (vertex_id_t *)malloc(G->nRoots * sizeof(vertex_id_t));
     assert(G->roots);
@@ -93,8 +98,8 @@ void gen_random_graph(graph_t *G)
     permute_vertices = G->permute_vertices;
     double *dbl_weight;
     double min_weight, max_weight;
-    n = G->n;
-    m = G->m;
+    n = G->n_V;
+    m = G->n_E;
     src = new vertex_id_t[m];
     assert(src != NULL);
     dest = new vertex_id_t[m];
@@ -155,23 +160,25 @@ void gen_random_graph(graph_t *G)
         degree[dest[i]]++;
     }
 
-    G->endV = new vertex_id_t[2 * m];
+    G->endV = (vertex_id_t*)malloc((2*m) * sizeof(vertex_id_t));
     assert(G->endV != NULL);
 
-    G->rowsIndices = new edge_id_t[n + 1];
+    G->rowsIndices = (edge_id_t *)malloc((n+1) * sizeof(edge_id_t));
     assert(G->rowsIndices != NULL);
 
-    G->n = n;
+    G->n_V = n;
+    G->local_n_V = n;
     /* undirected graph, each edge is stored twice; if edge is (u, v), then it's
      * stored at the vertex u and at the vertex v */
-    G->m = 2 * m;
+    G->n_E = 2 * m;
+    G->local_n_E = G->n_E;
     G->directed = false;
 
-    G->weights = (double *) malloc(G->m * sizeof(double));       
+    G->weights = (weight_t *) malloc(G->n_E * sizeof(weight_t));
     assert(G->weights != NULL);
 
     G->rowsIndices[0] = 0;
-    for (vertex_id_t i = 1; i <= G->n; i++) {
+    for (vertex_id_t i = 1; i <= G->n_V; i++) {
         G->rowsIndices[i] = G->rowsIndices[i - 1] + degree[i - 1];
     }
 
@@ -194,69 +201,11 @@ void gen_random_graph(graph_t *G)
     delete[] degree;
 }
 
-/* write graph to file */
-void writeGraph(graph_t *G, char *filename)
-{
-    FILE *F = fopen(filename, "wb");
-    if (!F) error(EXIT_FAILURE, 0, "Error in opening file %s", filename);
-	size_t objects_written = 0;
-
-    objects_written = fwrite(&G->n, sizeof(vertex_id_t), 1, F);
-    assert(objects_written ==  1);
-
-    edge_id_t arity = G->m / G->n;
-    objects_written = fwrite(&arity, sizeof(edge_id_t), 1, F);
-    assert(objects_written ==  1);
-    objects_written = fwrite(&G->directed, sizeof(bool), 1, F);
-    assert(objects_written ==  1);
-    uint8_t align = 0;
-    objects_written = fwrite(&align, sizeof(uint8_t), 1, F);
-    assert(objects_written ==  1);
-
-    objects_written = fwrite(G->rowsIndices, sizeof(edge_id_t), G->n+1, F);
-    assert(objects_written ==  G->n+1);
-    objects_written = fwrite(G->endV, sizeof(vertex_id_t), G->rowsIndices[G->n], F);
-    assert(objects_written ==  G->rowsIndices[G->n]);
-
-    objects_written = fwrite(&G->nRoots, sizeof(uint32_t), 1, F);
-    assert(objects_written ==  1);
-    objects_written = fwrite(G->roots, sizeof(vertex_id_t), G->nRoots, F);
-    assert(objects_written ==  G->nRoots);
-    objects_written = fwrite(G->numTraversedEdges, sizeof(edge_id_t), G->nRoots, F);
-    assert(objects_written ==  G->nRoots);
-
-    objects_written = fwrite(G->weights, sizeof(weight_t), G->m, F);
-    assert(objects_written ==  G->m);
-    fclose(F);
-}
-
-/* print graph */
-void printGraph(graph_t *G)
-{
-	int i,j;
-	for (i = 0; i < (int)G->n; ++i) {
-		printf("%d:", i);
-		for (j=G->rowsIndices[i]; j < (int)G->rowsIndices[i+1]; ++j)
-			printf("%d (%f), ", G->endV[j], G->weights[j]);
-		printf("\n");
-	}
-}
-
-void freeGraph(graph_t *G) {
-    delete[] G->rowsIndices;
-    delete[] G->endV;
-    free(G->weights);
-    free(G->roots);
-    free(G->numTraversedEdges);
-}
-
-
 int main(int argc, char **argv) {
     graph_t g;
     init(argc, argv, &g);
     gen_random_graph(&g);
-    printGraph(&g);
-    writeGraph(&g, outFilename);
-    freeGraph(&g);
+    g.printGraph();
+    g.writeGraph(outFilename);
     return 0;
 }

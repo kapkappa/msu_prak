@@ -7,6 +7,8 @@
 #include "mpi.h"
 #include <list>
 
+#include "graph.h"
+
 std::list<vertex_id_t> dummy_list;
 std::vector<std::list<vertex_id_t>::iterator> position_in_bucket;
 std::vector<bool> vertex_was_deleted;
@@ -28,7 +30,7 @@ MPI_Datatype message_type;
 std::vector<std::vector<message>> send_buffers;
 std::vector<std::vector<message>> recv_buffers;
 
-extern "C" void init_sssp(graph_t *G)
+void init_sssp(graph_t *G)
 {
     message msg;
 
@@ -45,7 +47,7 @@ extern "C" void init_sssp(graph_t *G)
     MPI_Type_commit(&message_type);
 }
 
-extern "C" void finalize_sssp()
+void finalize_sssp()
 {
     MPI_Type_free(&message_type);
 }
@@ -56,7 +58,7 @@ void relax(graph_t* G, weight_t* distance, vertex_id_t v, weight_t x, weight_t d
     std::cout << __func__ << " with params: " << v << ' ' << x << ' ' << delta << std::endl;
 #endif
 
-    if (VERTEX_OWNER(v, 0, 0) == G->rank) {
+    if (VERTEX_OWNER(v) == G->rank) {
         if (x < distance[v] || distance[v] < 0) {
             size_t new_index = floor(x / delta);
 
@@ -89,8 +91,8 @@ void relax(graph_t* G, weight_t* distance, vertex_id_t v, weight_t x, weight_t d
         }
     } else {
         if (x < distance[v] || distance[v] < 0) {
-            send_buffers[VERTEX_OWNER(v, 0, 0)].push_back( {x, v} );
-            send_counts[VERTEX_OWNER(v, 0, 0)]++;
+            send_buffers[VERTEX_OWNER(v)].push_back( {x, v} );
+            send_counts[VERTEX_OWNER(v)]++;
 
 //            distance[v] = x;
         }
@@ -131,20 +133,20 @@ void synchronize(graph_t* G, weight_t* distance, double delta) {
     MPI_Buffer_detach(&buffer_attached, &buffer_attached_size);
 }
 
-extern "C" void sssp(vertex_id_t root, graph_t *G, weight_t *distance, uint64_t *traversed_edges)
+void sssp(vertex_id_t root, graph_t *G, weight_t *distance, uint64_t *traversed_edges)
 {
 
-    double delta = (double)G->n / G->m;
+    double delta = (double)G->n_V / G->n_E;
 
     std::cout << "Start sssp with delta=" << delta << std::endl;
 
     uint64_t nedges = 0;
 
     position_in_bucket.clear();
-    position_in_bucket.resize(G->local_n, dummy_list.end());
+    position_in_bucket.resize(G->local_n_V, dummy_list.end());
 
     vertex_was_deleted.clear();
-    vertex_was_deleted.resize(G->local_n, false);
+    vertex_was_deleted.resize(G->local_n_V, false);
 
     send_counts.resize(G->nproc, 0);
     recv_counts.resize(G->nproc, 0);
@@ -152,7 +154,7 @@ extern "C" void sssp(vertex_id_t root, graph_t *G, weight_t *distance, uint64_t 
     send_buffers.resize(G->nproc);
     recv_buffers.resize(G->nproc);
 
-    if (VERTEX_OWNER(root, 0, 0) == G->rank) {
+    if (VERTEX_OWNER(root) == G->rank) {
         relax(G, distance, root, 0, delta);
     }
 

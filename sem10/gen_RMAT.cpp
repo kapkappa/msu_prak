@@ -1,14 +1,15 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <assert.h>
-#include <math.h>
+#include <cstdio>
+#include <iostream>
+#include <cstring>
+#include <cassert>
 #include <error.h>
+
+#include "graph.h"
 #include "defs.h"
 
 char outFilename[FNAME_LEN];
 
-void usage(int argc, char **argv) 
+void usage(int argc, char **argv)
 {
 	printf("Usage:\n");
 	printf("    %s -s <scale> [options]\n", argv[0]);
@@ -59,8 +60,11 @@ void init (int argc, char** argv, graph_t* G)
         usage(argc, argv);
     }
 
-    G->n = (vertex_id_t)1 << G->scale;
-    G->m = G->n * G->avg_vertex_degree;
+    G->n_V = (vertex_id_t)1 << G->scale;
+    G->n_E = G->n_V * G->avg_vertex_degree;
+
+    G->local_n_V = G->n_V;
+    G->local_n_E = G->n_E;
 
     G->roots = (vertex_id_t *)malloc(G->nRoots * sizeof(vertex_id_t));
     assert(G->roots);
@@ -74,7 +78,7 @@ void init (int argc, char** argv, graph_t* G)
 
 /* function is adapted from SNAP
  * http://snap-graph.sourceforge.net/ */
-void gen_RMAT_graph(graph_t* G) 
+void gen_RMAT_graph(graph_t* G)
 {
     edge_id_t i, j;
     bool undirected;
@@ -105,8 +109,8 @@ void gen_RMAT_graph(graph_t* G)
     permute_vertices = G->permute_vertices;
 
     undirected = !G->directed;
-    n = G->n;
-    m = G->m;
+    n = G->n_V;
+    m = G->n_E;
 
     src = (vertex_id_t *) malloc (m * sizeof(vertex_id_t));
     dest = (vertex_id_t *) malloc(m * sizeof(vertex_id_t));
@@ -221,7 +225,7 @@ void gen_RMAT_graph(graph_t* G)
     /* Update graph data structure */
     if (undirected) {
         G->endV = (vertex_id_t *) malloc(2*m * sizeof(vertex_id_t));
-    } else { 
+    } else {
         G->endV = (vertex_id_t *) malloc(m * sizeof(vertex_id_t));
     }
 
@@ -230,17 +234,20 @@ void gen_RMAT_graph(graph_t* G)
     G->rowsIndices = (edge_id_t *) malloc((n+1)*sizeof(edge_id_t));
     assert(G->rowsIndices != NULL);
 
-    G->n = n;
+    G->n_V = n;
     if (undirected)
-        G->m = 2*m;
+        G->n_E = 2*m;
     else
-        G->m = m;
+        G->n_E = m;
 
-    G->weights = (double *) malloc(G->m * sizeof(double));       
+    G->local_n_V = G->n_V;
+    G->local_n_E = G->n_E;
+
+    G->weights = (weight_t*)malloc(G->n_E * sizeof(weight_t));
     assert(G->weights != NULL);
 
-    G->rowsIndices[0] = 0; 
-    for (i=1; i<=G->n; i++) {
+    G->rowsIndices[0] = 0;
+    for (i=1; i<=G->n_V; i++) {
         G->rowsIndices[i] = G->rowsIndices[i-1] + degree[i-1];
     }
 
@@ -256,7 +263,7 @@ void gen_RMAT_graph(graph_t* G)
             G->endV[G->rowsIndices[v]+offset-1] = u;
             G->weights[G->rowsIndices[v]+offset-1] = dbl_weight[i];
         }
-    } 
+    }
 
     free(src);
     free(dest);
@@ -265,60 +272,16 @@ void gen_RMAT_graph(graph_t* G)
     free(dbl_weight);
 }
 
-/* write graph to file */
-void writeGraph(graph_t *G, char *filename)
-{
-    FILE *F = fopen(filename, "wb");
-    if (!F) error(EXIT_FAILURE, 0, "Error in opening file %s", filename);
-	size_t objects_written = 0;
-
-    objects_written = fwrite(&G->n, sizeof(vertex_id_t), 1, F);
-    assert(objects_written ==  1);
-    
-    edge_id_t arity = G->m / G->n;
-    objects_written = fwrite(&arity, sizeof(edge_id_t), 1, F);
-    assert(objects_written ==  1);
-    objects_written = fwrite(&G->directed, sizeof(bool), 1, F);
-    assert(objects_written ==  1);
-    uint8_t align = 0;
-    objects_written = fwrite(&align, sizeof(uint8_t), 1, F);
-    assert(objects_written ==  1);
-
-    objects_written = fwrite(G->rowsIndices, sizeof(edge_id_t), G->n+1, F);
-    assert(objects_written ==  G->n+1);
-    objects_written = fwrite(G->endV, sizeof(vertex_id_t), G->rowsIndices[G->n], F);
-    assert(objects_written ==  G->rowsIndices[G->n]);
-    
-    objects_written = fwrite(&G->nRoots, sizeof(uint32_t), 1, F);
-    assert(objects_written ==  1);
-    objects_written = fwrite(G->roots, sizeof(vertex_id_t), G->nRoots, F);
-    assert(objects_written ==  G->nRoots);
-    objects_written = fwrite(G->numTraversedEdges, sizeof(edge_id_t), G->nRoots, F);
-    assert(objects_written ==  G->nRoots);
-
-    objects_written = fwrite(G->weights, sizeof(weight_t), G->m, F);
-    assert(objects_written ==  G->m);
-    fclose(F);
-}
-
-/* print graph */
-void printGraph(graph_t *G)
-{
-	int i,j;
-	for (i = 0; i < (int)G->n; ++i) {
-		printf("%d:", i);
-		for (j=G->rowsIndices[i]; j < (int)G->rowsIndices[i+1]; ++j)
-			printf("%d (%f), ", G->endV[j], G->weights[j]);
-		printf("\n");
-	}
-}
-
 int main (int argc, char** argv)
 {
     graph_t g;
+    int err;
     init(argc, argv, &g);
     gen_RMAT_graph(&g);
-    //printGraph(&g);
-    writeGraph(&g, outFilename);
+    g.printGraph();
+    if ((err = g.writeGraph(outFilename))) {
+        std::cout << "write graph error: " << err << std::endl;
+        exit(1);
+    }
     return 0;
 }
