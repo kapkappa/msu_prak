@@ -187,6 +187,8 @@ int main(int argc, char **argv)
 
     local_dist = (weight_t *)malloc(g.local_n * sizeof(weight_t));
 
+    init_sssp(&g);
+
     /* doing SSSP */
     for ( i = 0; i < g.nRoots; ++i) {
         /* initializing for validation, -1 = infinity */
@@ -207,6 +209,9 @@ int main(int argc, char **argv)
             write_validate(&g, local_dist);
         }
     }
+
+    finalize_sssp();
+
     free(local_dist);
     freeGraph(&g);
     MPI_Finalize();
