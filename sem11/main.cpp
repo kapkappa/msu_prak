@@ -1,14 +1,16 @@
 #include "field.h"
 
+#include "omp.h"
+
 #include <math.h>
 
 #include <sys/time.h>
 
-static inline double analytical(double x, double y, double z, int Lx, int Ly, int Lz, double t) {
+static inline double analytical(double x, double y, double z, double Lx, double Ly, double Lz, double t) {
     double a = M_PI * std::sqrt(9.0 / (Lx * Lx) + 4.0 / (Ly * Ly) + 4.0 / (Lz * Lz));
-    return std::sin(3.0 * M_PI * x / (double)Lx) *
-           std::sin(2.0 * M_PI * y / (double)Ly) *
-           std::sin(2.0 * M_PI * z / (double)Lz) *
+    return std::sin(3.0 * M_PI * x / Lx) *
+           std::sin(2.0 * M_PI * y / Ly) *
+           std::sin(2.0 * M_PI * z / Lz) *
            std::cos(a * t + 4.0 * M_PI);
 }
 
@@ -25,18 +27,16 @@ static void show_help() {
 }
 
 static double calc_residual(const Field& U_appr, const Field& U_anal, int N) {
-    double max_norm = 0.0, l2_norm = 0.0;
+    double max_norm = 0.0;
     for (int i = 0; i < N+1; i++) {
         for (int j = 0; j < N+1; j++) {
             for (int k = 0; k < N+1; k++) {
                 double tmp = std::abs(U_appr(i,j,k) - U_anal(i,j,k));
                 max_norm = std::max(tmp, max_norm);
-                l2_norm += tmp * tmp;
             }
         }
     }
     return max_norm;
-//    return std::sqrt(l2_norm);
 }
 
 
@@ -47,22 +47,24 @@ int main(int argc, char** argv) {
         exit(0);
     }
 
-    int L = atoi(argv[1]);
-//    double L = M_PI;
+//    auto nthreads = omp_get_max_threads();
+//    omp_set_num_threads(nthreads);
+    std::cout << "Threads number: " << omp_get_max_threads() << std::endl;
+
+    int type = atoi(argv[1]);
+    double L = type ? (double)type : M_PI;
 
     int N = atoi(argv[2]);
 
     double dt = std::stod(argv[3]);
-//    double T = std::stod(argv[3]);
-//    double dt = T / K;
 
     int K = atoi(argv[4]);
 
-    int Lx = L, Ly = L, Lz = L;
+    double Lx = L, Ly = L, Lz = L;
 
-    double dx = (double)Lx / (double)N;
-    double dy = (double)Ly / (double)N;
-    double dz = (double)Lz / (double)N;
+    double dx = Lx / (double)N;
+    double dy = Ly / (double)N;
+    double dz = Lz / (double)N;
 
     double t = 0.0;
 
@@ -77,13 +79,11 @@ int main(int argc, char** argv) {
     for (int i = 0; i < N+1; i++) {
         for (int j = 0; j < N+1; j++) {
             for (int k = 0; k < N+1; k++) {
-                double val = analytical(i*dx, j*dy, k*dz, Lx, Ly, Lz, t);
-                U_prev(i,j,k) = val;
+                U_prev(i,j,k) = analytical(i*dx, j*dy, k*dz, Lx, Ly, Lz, t);
             }
         }
     }
     t += dt;
-//    U_prev.print("U0");
 
     // Calc U1
     for (int i = 0; i < N+1; i++) {
@@ -102,33 +102,26 @@ int main(int argc, char** argv) {
         }
     }
     t += dt;
-//    U_curr.print("U1");
-
-
-    // Steps
 
     double t1 = timer();
 
     for (int step = 0; step < K; step++) {
 
+#pragma omp parallel for
         for (int i = 1; i < N; i++) {
             for (int j = 0; j < N+1; j++) {
                 for (int k = 0; k < N+1; k++) {
                     double x_diff, y_diff, z_diff;
                     x_diff = U_curr(i-1,j,k) - 2 * U_curr(i,j,k) + U_curr(i+1,j,k);
 
-                    if (j == 0) {
-                        y_diff = U_curr(i,N-1,k) - 2 * U_curr(i,j,k) + U_curr(i,j+1,k);
-                    } else if (j == N) {
-                        y_diff = U_curr(i,j-1,k) - 2 * U_curr(i,j,k) + U_curr(i,0+1,k);
+                    if (j == 0 || j == N) {
+                        y_diff = U_curr(i,N-1,k) - 2 * U_curr(i,j,k) + U_curr(i,1,k);
                     } else {
                         y_diff = U_curr(i,j-1,k) - 2 * U_curr(i,j,k) + U_curr(i,j+1,k);
                     }
 
-                    if (k == 0) {
-                        z_diff = U_curr(i,j,N-1) - 2 * U_curr(i,j,k) + U_curr(i,j,k+1);
-                    } else if (k == N) {
-                        z_diff = U_curr(i,j,k-1) - 2 * U_curr(i,j,k) + U_curr(i,j,0+1);
+                    if (k == 0 || k == N) {
+                        z_diff = U_curr(i,j,N-1) - 2 * U_curr(i,j,k) + U_curr(i,j,1);
                     } else {
                         z_diff = U_curr(i,j,k-1) - 2 * U_curr(i,j,k) + U_curr(i,j,k+1);
                     }
@@ -141,21 +134,18 @@ int main(int argc, char** argv) {
             }
         }
 
+#pragma omp parallel for
         for (int i = 0; i < N+1; i++) {
             for (int j = 0; j < N+1; j++) {
                 for (int k = 0; k < N+1; k++) {
-                    double val = analytical(i*dx, j*dy, k*dz, Lx, Ly, Lz, t);
-                    U_anal(i,j,k) = val;
+                    U_anal(i,j,k) = analytical(i*dx, j*dy, k*dz, Lx, Ly, Lz, t);
                 }
             }
         }
+
         std::cout << calc_residual(U_prev, U_anal, N) << std::endl;
 
-//        U_anal.print("anal");
-//        U_next.print("next");
-
         std::swap(U_prev.array, U_curr.array);
-//        std::swap(U_curr.array, U_next.array);
 
         t += dt;
     }
