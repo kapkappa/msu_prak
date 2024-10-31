@@ -1,0 +1,12 @@
+#BSUB -J "launch_openmp"
+#BSUB -q short
+#BSUB -W 00:30
+#BSUB -oo logs/log.out
+#BSUB -eo logs/log.err
+#BSUB -R "affinity[core(16)]"
+
+OMP_NUM_THREADS=32
+
+/polusfs/lsf/openmp/launchOpenMP.py ./prog 1 128 0.00001 20
+/polusfs/lsf/openmp/launchOpenMP.py ./prog 1 256 0.00001 20
+/polusfs/lsf/openmp/launchOpenMP.py ./prog 1 512 0.00001 20
