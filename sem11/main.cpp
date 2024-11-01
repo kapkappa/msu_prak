@@ -68,14 +68,17 @@ int main(int argc, char** argv) {
 
     double t = 0.0;
 
-    Field U_prev, U_curr, U_next, U_anal;
+    Field U_prev, U_curr, U_next;
 
     U_prev.init(N+1, N+1, N+1);
     U_curr.init(N+1, N+1, N+1);
-    U_anal.init(N+1, N+1, N+1);
+//    U_anal.init(N+1, N+1, N+1);
 
+
+    double t1 = timer();
 
     // Calc U0
+#pragma omp parallel for
     for (int i = 0; i < N+1; i++) {
         for (int j = 0; j < N+1; j++) {
             for (int k = 0; k < N+1; k++) {
@@ -86,6 +89,7 @@ int main(int argc, char** argv) {
     t += dt;
 
     // Calc U1
+#pragma omp parallel for
     for (int i = 0; i < N+1; i++) {
         for (int j = 0; j < N+1; j++) {
             for (int k = 0; k < N+1; k++) {
@@ -103,8 +107,7 @@ int main(int argc, char** argv) {
     }
     t += dt;
 
-    double t1 = timer();
-
+// Main cycle
     for (int step = 0; step < K; step++) {
 
 #pragma omp parallel for
@@ -134,6 +137,11 @@ int main(int argc, char** argv) {
             }
         }
 
+        std::swap(U_prev.array, U_curr.array);
+
+        t += dt;
+    }
+/*
 #pragma omp parallel for
         for (int i = 0; i < N+1; i++) {
             for (int j = 0; j < N+1; j++) {
@@ -141,17 +149,26 @@ int main(int argc, char** argv) {
                     U_anal(i,j,k) = analytical(i*dx, j*dy, k*dz, Lx, Ly, Lz, t);
                 }
             }
+    }
+    std::cout << calc_residual(U_prev, U_anal, N) << std::endl;
+*/
+
+    double max_norm = 0.0;
+
+#pragma omp parallel for reduction(max:max_norm)
+    for (int i = 0; i < N+1; i++) {
+        for (int j = 0; j < N+1; j++) {
+            for (int k = 0; k < N+1; k++) {
+                double val = analytical(i*dx, j*dy, k*dz, Lx, Ly, Lz, t-dt);
+                double tmp = std::abs(U_curr(i,j,k) - val);
+                max_norm = std::max(tmp, max_norm);
+            }
         }
-
-        std::cout << calc_residual(U_prev, U_anal, N) << std::endl;
-
-        std::swap(U_prev.array, U_curr.array);
-
-        t += dt;
     }
 
     double t2 = timer();
 
+    std::cout << "Max residual: " << max_norm << std::endl;
     std::cout << "Time: " << t2 - t1 << std::endl;
 
     return 0;
