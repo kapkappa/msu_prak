@@ -26,20 +26,6 @@ static void show_help() {
     std::cout << "Need args: L N dt max_timesteps" << std::endl;
 }
 
-static double calc_residual(const Field& U_appr, const Field& U_anal, int N) {
-    double max_norm = 0.0;
-    for (int i = 0; i < N+1; i++) {
-        for (int j = 0; j < N+1; j++) {
-            for (int k = 0; k < N+1; k++) {
-                double tmp = std::abs(U_appr(i,j,k) - U_anal(i,j,k));
-                max_norm = std::max(tmp, max_norm);
-            }
-        }
-    }
-    return max_norm;
-}
-
-
 int main(int argc, char** argv) {
 
     if (argc != 5) {
@@ -72,8 +58,6 @@ int main(int argc, char** argv) {
 
     U_prev.init(N+1, N+1, N+1);
     U_curr.init(N+1, N+1, N+1);
-//    U_anal.init(N+1, N+1, N+1);
-
 
     double t1 = timer();
 
@@ -141,17 +125,6 @@ int main(int argc, char** argv) {
 
         t += dt;
     }
-/*
-#pragma omp parallel for
-        for (int i = 0; i < N+1; i++) {
-            for (int j = 0; j < N+1; j++) {
-                for (int k = 0; k < N+1; k++) {
-                    U_anal(i,j,k) = analytical(i*dx, j*dy, k*dz, Lx, Ly, Lz, t);
-                }
-            }
-    }
-    std::cout << calc_residual(U_prev, U_anal, N) << std::endl;
-*/
 
     double max_norm = 0.0;
 
