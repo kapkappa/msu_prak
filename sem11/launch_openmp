@@ -4,9 +4,25 @@
 #BSUB -oo logs/log.out
 #BSUB -eo logs/log.err
 #BSUB -R "affinity[core(16)]"
+#BSUB -x
+#BSUB -m "polus-c3-ib polus-c4-ib"
 
 OMP_NUM_THREADS=32
 
 /polusfs/lsf/openmp/launchOpenMP.py ./prog 1 128 0.00001 20
+/polusfs/lsf/openmp/launchOpenMP.py ./prog 1 128 0.00001 20
+/polusfs/lsf/openmp/launchOpenMP.py ./prog 1 128 0.00001 20
+/polusfs/lsf/openmp/launchOpenMP.py ./prog 1 128 0.00001 20
+/polusfs/lsf/openmp/launchOpenMP.py ./prog 1 128 0.00001 20
+
 /polusfs/lsf/openmp/launchOpenMP.py ./prog 1 256 0.00001 20
+/polusfs/lsf/openmp/launchOpenMP.py ./prog 1 256 0.00001 20
+/polusfs/lsf/openmp/launchOpenMP.py ./prog 1 256 0.00001 20
+/polusfs/lsf/openmp/launchOpenMP.py ./prog 1 256 0.00001 20
+/polusfs/lsf/openmp/launchOpenMP.py ./prog 1 256 0.00001 20
+
+/polusfs/lsf/openmp/launchOpenMP.py ./prog 1 512 0.00001 20
+/polusfs/lsf/openmp/launchOpenMP.py ./prog 1 512 0.00001 20
+/polusfs/lsf/openmp/launchOpenMP.py ./prog 1 512 0.00001 20
+/polusfs/lsf/openmp/launchOpenMP.py ./prog 1 512 0.00001 20
 /polusfs/lsf/openmp/launchOpenMP.py ./prog 1 512 0.00001 20
