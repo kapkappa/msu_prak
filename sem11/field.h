@@ -74,5 +74,17 @@ public:
 //    double * get_ptr() { return array; }
 //    double * get_ptr() const { return array; }
     void print(const std::string&) const;
+
+    double* yz(int x_offset) {
+        return array + x_offset * y_size * z_size;
+    }
+
+    double* xz(int y_offset) {
+        return array + y_offset * z_size;
+    }
+
+    double* xy(int z_offset) {
+        return array + z_offset;
+    }
 };
 

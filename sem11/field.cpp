@@ -11,11 +11,11 @@ void Field::print(const std::string& txt) const {
 
     std::cout << std::scientific << std::setprecision(3);
     for (unsigned int i = 0; i < x_size; i++) {
-        std::cout << i << std::endl;
+        printf("x: %d\n", i);
         for (unsigned int j = 0; j < y_size; j++) {
-            std::cout << j << ": ";
+            printf("y=%d: ", j);
             for (unsigned int k = 0; k < z_size; k++) {
-                std::cout << array[i * z_size * y_size + j * z_size + k] << ' ';
+                printf("%+1.12E ", array[i * z_size * y_size + j * z_size + k]);
             }
             std::cout << std::endl;
         }
