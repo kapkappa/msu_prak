@@ -57,9 +57,13 @@ double max_norm(const Field& U, int x_size, int y_size, int z_size, int*cart_coo
         }
     }
 
-    MPI_Allreduce(&max_norm, &max_norm, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+//    MPI_Allreduce(&max_norm, &max_norm, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+//    return max_norm;
 
-    return max_norm;
+    double result = 0.0;
+    MPI_Reduce(&max_norm, &result, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+
+    return result;
 }
 
 
@@ -144,7 +148,22 @@ int main(int argc, char** argv) {
     int cart_coords[3];
     MPI_Cart_coords(new_communicator, cart_rank, 3, cart_coords);
 
-//    printf("[MPI process %d] I am located at (%d, %d, %d).\n", rank, cart_coords[0], cart_coords[1], cart_coords[2]);
+    enum DIRECTIONS {LEFT, RIGHT, BACK, FRONT, BELOW, ABOVE};
+
+    char* neighbours_names[6] = {"left", "right", "back", "front", "below", "above"};
+    int neighbours_ranks[6];
+
+    // Let consider dims[0] = X, so the shift tells us our left and right neighbours
+    MPI_Cart_shift(new_communicator, 0, 1, &neighbours_ranks[LEFT], &neighbours_ranks[RIGHT]);
+
+    // Let consider dims[1] = Y, so the shift tells us our back and front neighbours
+    MPI_Cart_shift(new_communicator, 1, 1, &neighbours_ranks[BACK], &neighbours_ranks[FRONT]);
+
+    // Let consider dims[2] = Z, so the shift tells us our below and above neighbours
+    MPI_Cart_shift(new_communicator, 2, 1, &neighbours_ranks[BELOW], &neighbours_ranks[ABOVE]);
+
+//    printf("[MPI process %d] I am located at (%d, %d, %d). My neighbours: %d %d, %d %d, %d %d\n", rank, cart_coords[0], cart_coords[1], cart_coords[2],
+//            neighbours_ranks[0], neighbours_ranks[1], neighbours_ranks[2], neighbours_ranks[3], neighbours_ranks[4], neighbours_ranks[5]);
 
     Field U_prev, U_curr;
 
@@ -168,31 +187,17 @@ int main(int argc, char** argv) {
     MPI_Type_vector(y_size * x_size, 1, z_size, MPI_DOUBLE, &XY);
     MPI_Type_commit(&XY);
 
+    MPI_Request requests[12];
 
-    int rank_left = rank - dims[1] * dims[2];
-    if (cart_coords[0] == 0)
-        rank_left = rank + (dims[0]-1) * dims[1] * dims[2];
+    int rank_left  = neighbours_ranks[LEFT];
+    int rank_right = neighbours_ranks[RIGHT];
+    int rank_back  = neighbours_ranks[BACK];
+    int rank_front = neighbours_ranks[FRONT];
+    int rank_below = neighbours_ranks[BELOW];
+    int rank_above = neighbours_ranks[ABOVE];
 
-    int rank_right = rank + dims[1] * dims[2];
-    if (cart_coords[0] == dims[0]-1)
-        rank_right = rank - (dims[0]-1) * dims[1] * dims[2];
-
-    int rank_back = rank - dims[2];
-    if (cart_coords[1] == 0)
-        rank_back = rank + (dims[1]-1) * dims[2];
-
-    int rank_front = rank + dims[2];
-    if (cart_coords[1] == dims[1]-1)
-        rank_front = rank - (dims[1]-1) * dims[2];
-
-    int rank_below = rank - 1;
-    if (cart_coords[2] == 0)
-        rank_below = rank + (dims[2] - 1);
-
-    int rank_above = rank + 1;
-    if (cart_coords[2] == dims[2]-1)
-        rank_above = rank - (dims[2] - 1);
-
+    int x_prev_offset = x_size - 1;
+    int x_next_offset = 0;
 
     int y_prev_offset = y_size - 1;
     if (cart_coords[1] == dims[1]-1)
@@ -232,68 +237,391 @@ int main(int argc, char** argv) {
 // Main cycle
     for (int step = 0; step < K; step++) {
 
-        // X dim, YZ plain
-        // send PREV to RIGHT and receive PREV from LEFT
-        MPI_Sendrecv(U_curr.yz(x_size-1), y_size*z_size, MPI_DOUBLE, rank_right, 0,
-                     yz_buff_prev,        y_size*z_size, MPI_DOUBLE, rank_left , 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        // send NEXT to LEFT and receive NEXT from RIGHT
-        MPI_Sendrecv(U_curr.yz(0), y_size*z_size, MPI_DOUBLE, rank_left , 0,
-                     yz_buff_next, y_size*z_size, MPI_DOUBLE, rank_right, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        MPI_Isend(U_curr.yz(x_prev_offset), y_size*z_size, MPI_DOUBLE, rank_right, 0, MPI_COMM_WORLD, &requests[0]);
+        MPI_Isend(U_curr.yz(x_next_offset), y_size*z_size, MPI_DOUBLE, rank_left,  1, MPI_COMM_WORLD, &requests[2]);
+        MPI_Isend(U_curr.xz(y_prev_offset), 1,             XZ,         rank_front, 2, MPI_COMM_WORLD, &requests[4]);
+        MPI_Isend(U_curr.xz(y_next_offset), 1,             XZ,         rank_back,  3, MPI_COMM_WORLD, &requests[6]);
+        MPI_Isend(U_curr.xy(z_prev_offset), 1,             XY,         rank_above, 4, MPI_COMM_WORLD, &requests[8]);
+        MPI_Isend(U_curr.xy(z_next_offset), 1,             XY,         rank_below, 5, MPI_COMM_WORLD, &requests[10]);
 
-        //Y dim, XZ plain
-        // send PREV to FRONT and recieve PREV from BACK
-        MPI_Sendrecv(U_curr.xz(y_prev_offset), 1,             XZ,         rank_front, 0,
-                     xz_buff_prev,             x_size*z_size, MPI_DOUBLE, rank_back , 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
-        // send NEXT to BACK and receive NEXT from FRONT
-        MPI_Sendrecv(U_curr.xz(y_next_offset), 1,             XZ,         rank_back,  0,
-                     xz_buff_next,             x_size*z_size, MPI_DOUBLE, rank_front, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
-
-        //Z dim, XY plain
-        // send PREV to ABOVE and receive from BELOW
-        MPI_Sendrecv(U_curr.xy(z_prev_offset), 1,             XY,         rank_above, 0,
-                     xy_buff_prev,             x_size*y_size, MPI_DOUBLE, rank_below, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
-        // send NEXT to BELOW and receive from ABOVE
-        MPI_Sendrecv(U_curr.xy(z_next_offset), 1,             XY,         rank_below, 0,
-                     xy_buff_next,             x_size*y_size, MPI_DOUBLE, rank_above, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        MPI_Irecv(yz_buff_prev, y_size*z_size, MPI_DOUBLE, rank_left,  0, MPI_COMM_WORLD, &requests[1]);
+        MPI_Irecv(yz_buff_next, y_size*z_size, MPI_DOUBLE, rank_right, 1, MPI_COMM_WORLD, &requests[3]);
+        MPI_Irecv(xz_buff_prev, x_size*z_size, MPI_DOUBLE, rank_back,  2, MPI_COMM_WORLD, &requests[5]);
+        MPI_Irecv(xz_buff_next, x_size*z_size, MPI_DOUBLE, rank_front, 3, MPI_COMM_WORLD, &requests[7]);
+        MPI_Irecv(xy_buff_prev, x_size*y_size, MPI_DOUBLE, rank_below, 4, MPI_COMM_WORLD, &requests[9]);
+        MPI_Irecv(xy_buff_next, x_size*y_size, MPI_DOUBLE, rank_above, 5, MPI_COMM_WORLD, &requests[11]);
 
 #pragma omp parallel for
-        for (int i = from; i < to; i++) {
-            for (int j = 0; j < y_size; j++) {
-                for (int k = 0; k < z_size; k++) {
-                    double x_diff, y_diff, z_diff;
+        for (int i = 1; i < x_size-1; i++) {
+            for (int j = 1; j < y_size-1; j++) {
+                for (int k = 1; k < z_size-1; k++) {
 
-                    if (i == 0) {
-                        x_diff = yz_buff_prev[j*z_size + k] - 2 * U_curr(i,j,k) + U_curr(i+1,j,k);
-                    } else if (i == x_size-1) {
-                        x_diff = U_curr(i-1,j,k) - 2 * U_curr(i,j,k) + yz_buff_next[j*z_size + k];
-                    } else {
-                        x_diff = U_curr(i-1,j,k) - 2 * U_curr(i,j,k) + U_curr(i+1,j,k);
-                    }
-
-                    if (j == 0) {
-                        y_diff = xz_buff_prev[i*z_size+k] - 2 * U_curr(i,j,k) + U_curr(i,j+1,k);
-                    } else if (j == y_size-1) {
-                        y_diff = U_curr(i,j-1,k) - 2 * U_curr(i,j,k) + xz_buff_next[i*z_size+k];
-                    } else {
-                        y_diff = U_curr(i,j-1,k) - 2 * U_curr(i,j,k) + U_curr(i,j+1,k);
-                    }
-
-                    if (k == 0) {
-                        z_diff = xy_buff_prev[i*y_size+j] - 2 * U_curr(i,j,k) + U_curr(i,j,k+1);
-                    } else if (k == z_size-1) {
-                        z_diff = U_curr(i,j,k-1) - 2 * U_curr(i,j,k) + xy_buff_next[i*y_size+j];
-                    } else {
-                        z_diff = U_curr(i,j,k-1) - 2 * U_curr(i,j,k) + U_curr(i,j,k+1);
-                    }
+                    double x_diff = U_curr(i-1,j,k) - 2 * U_curr(i,j,k) + U_curr(i+1,j,k);
+                    double y_diff = U_curr(i,j-1,k) - 2 * U_curr(i,j,k) + U_curr(i,j+1,k);
+                    double z_diff = U_curr(i,j,k-1) - 2 * U_curr(i,j,k) + U_curr(i,j,k+1);
 
                     double laplas = x_diff / (dx * dx) + y_diff / (dy * dy) + z_diff / (dz * dz);
 
                     // Use U_prev instead of U_next and then just swap pointers
                     U_prev(i,j,k) =  dt * dt * laplas - U_prev(i,j,k) + 2 * U_curr(i,j,k);
                 }
+            }
+        }
+
+        MPI_Waitall(12, requests, MPI_STATUS_IGNORE);
+
+        // i == 0 or i == x_size - 1
+        {
+            int i = from;
+            if (i == 0) {
+#pragma omp parallel for
+                for (int j = 1; j < y_size-1; j++) {
+                    for (int k = 1; k < z_size-1; k++) {
+                        double x_diff = yz_buff_prev[j*z_size + k] - 2 * U_curr(i,j,k) + U_curr(i+1,j,k);
+                        double y_diff = U_curr(i,j-1,k) - 2 * U_curr(i,j,k) + U_curr(i,j+1,k);
+                        double z_diff = U_curr(i,j,k-1) - 2 * U_curr(i,j,k) + U_curr(i,j,k+1);
+
+                        double laplas = x_diff / (dx * dx) + y_diff / (dy * dy) + z_diff / (dz * dz);
+
+                        U_prev(i,j,k) =  dt * dt * laplas - U_prev(i,j,k) + 2 * U_curr(i,j,k);
+                    }
+                }
+            }
+
+            i = to-1;
+            if (i == x_size-1) {
+#pragma omp parallel for
+                for (int j = 1; j < y_size-1; j++) {
+                    for (int k = 1; k < z_size-1; k++) {
+                        double x_diff = U_curr(i-1,j,k) - 2 * U_curr(i,j,k) + yz_buff_next[j*z_size + k];
+                        double y_diff = U_curr(i,j-1,k) - 2 * U_curr(i,j,k) + U_curr(i,j+1,k);
+                        double z_diff = U_curr(i,j,k-1) - 2 * U_curr(i,j,k) + U_curr(i,j,k+1);
+
+                        double laplas = x_diff / (dx * dx) + y_diff / (dy * dy) + z_diff / (dz * dz);
+
+                        U_prev(i,j,k) =  dt * dt * laplas - U_prev(i,j,k) + 2 * U_curr(i,j,k);
+                    }
+                }
+            }
+        }
+
+        // j == 0 or j == y_size - 1
+        {
+            int j = 0;
+#pragma omp parallel for
+            for (int i = 1; i < x_size-1; i++) {
+                for (int k = 1; k < z_size-1; k++) {
+                    double x_diff = U_curr(i-1,j,k) - 2 * U_curr(i,j,k) + U_curr(i+1,j,k);
+                    double y_diff = xz_buff_prev[i*z_size+k] - 2 * U_curr(i,j,k) + U_curr(i,j+1,k);
+                    double z_diff = U_curr(i,j,k-1) - 2 * U_curr(i,j,k) + U_curr(i,j,k+1);
+
+                    double laplas = x_diff / (dx * dx) + y_diff / (dy * dy) + z_diff / (dz * dz);
+
+                    U_prev(i,j,k) =  dt * dt * laplas - U_prev(i,j,k) + 2 * U_curr(i,j,k);
+                }
+            }
+
+            j = y_size-1;
+#pragma omp paralle for
+            for (int i = 1; i < x_size-1; i++) {
+                for (int k = 1; k < z_size-1; k++) {
+                    double x_diff = U_curr(i-1,j,k) - 2 * U_curr(i,j,k) + U_curr(i+1,j,k);
+                    double y_diff = U_curr(i,j-1,k) - 2 * U_curr(i,j,k) + xz_buff_next[i*z_size+k];
+                    double z_diff = U_curr(i,j,k-1) - 2 * U_curr(i,j,k) + U_curr(i,j,k+1);
+
+                    double laplas = x_diff / (dx * dx) + y_diff / (dy * dy) + z_diff / (dz * dz);
+
+                    U_prev(i,j,k) =  dt * dt * laplas - U_prev(i,j,k) + 2 * U_curr(i,j,k);
+                }
+            }
+        }
+
+        // k == 0 or k == z_size-1
+        {
+            int k = 0;
+#pragma omp parallel for
+            for (int i = 1; i < x_size-1; i++) {
+                for (int j = 1; j < y_size-1; j++) {
+                    double x_diff = U_curr(i-1,j,k) - 2 * U_curr(i,j,k) + U_curr(i+1,j,k);
+                    double y_diff = U_curr(i,j-1,k) - 2 * U_curr(i,j,k) + U_curr(i,j+1,k);
+                    double z_diff = xy_buff_prev[i*y_size+j] - 2 * U_curr(i,j,k) + U_curr(i,j,k+1);
+
+                    double laplas = x_diff / (dx * dx) + y_diff / (dy * dy) + z_diff / (dz * dz);
+
+                    U_prev(i,j,k) =  dt * dt * laplas - U_prev(i,j,k) + 2 * U_curr(i,j,k);
+                }
+            }
+
+            k = z_size-1;
+#pragma omp parallel for
+            for (int i = 1; i < x_size-1; i++) {
+                for (int j = 1; j < y_size-1; j++) {
+                    double x_diff = U_curr(i-1,j,k) - 2 * U_curr(i,j,k) + U_curr(i+1,j,k);
+                    double y_diff = U_curr(i,j-1,k) - 2 * U_curr(i,j,k) + U_curr(i,j+1,k);
+                    double z_diff = U_curr(i,j,k-1) - 2 * U_curr(i,j,k) + xy_buff_next[i*y_size+j];
+
+                    double laplas = x_diff / (dx * dx) + y_diff / (dy * dy) + z_diff / (dz * dz);
+
+                    U_prev(i,j,k) =  dt * dt * laplas - U_prev(i,j,k) + 2 * U_curr(i,j,k);
+                }
+            }
+        }
+
+        // Now, remaining iters: i == 0 || x_size-1 && j == 0 || y_size - 1 && k == 0 || z_size-1
+        for (int i = 1; i < x_size-1; i++) {
+            // j == 0 && k == 0
+            {
+                int j = 0;
+                int k = 0;
+
+                double x_diff = U_curr(i-1,j,k) - 2 * U_curr(i,j,k) + U_curr(i+1,j,k);
+                double y_diff = xz_buff_prev[i*z_size + k] - 2 * U_curr(i,j,k) + U_curr(i,j+1,k);
+                double z_diff = xy_buff_prev[i*y_size + j] - 2 * U_curr(i,j,k) + U_curr(i,j,k+1);
+
+                double laplas = x_diff / (dx * dx) + y_diff / (dy * dy) + z_diff / (dz * dz);
+                U_prev(i,j,k) =  dt * dt * laplas - U_prev(i,j,k) + 2 * U_curr(i,j,k);
+            }
+
+            // j == 0 && k == z_size-1
+            {
+                int j = 0;
+                int k = z_size-1;
+
+                double x_diff = U_curr(i-1,j,k) - 2 * U_curr(i,j,k) + U_curr(i+1,j,k);
+                double y_diff = xz_buff_prev[i*z_size + k] - 2 * U_curr(i,j,k) + U_curr(i,j+1,k);
+                double z_diff = U_curr(i,j,k-1) - 2 * U_curr(i,j,k) + xy_buff_next[i*y_size + j];
+
+                double laplas = x_diff / (dx * dx) + y_diff / (dy * dy) + z_diff / (dz * dz);
+                U_prev(i,j,k) =  dt * dt * laplas - U_prev(i,j,k) + 2 * U_curr(i,j,k);
+            }
+
+            // j == y_size-1 && k == 0
+            {
+                int j = y_size-1;
+                int k = 0;
+
+                double x_diff = U_curr(i-1,j,k) - 2 * U_curr(i,j,k) + U_curr(i+1,j,k);
+                double y_diff = U_curr(i,j-1,k) - 2 * U_curr(i,j,k) + xz_buff_next[i*z_size + k];
+                double z_diff = xy_buff_prev[i*y_size + j] - 2 * U_curr(i,j,k) + U_curr(i,j,k+1);
+
+                double laplas = x_diff / (dx * dx) + y_diff / (dy * dy) + z_diff / (dz * dz);
+                U_prev(i,j,k) =  dt * dt * laplas - U_prev(i,j,k) + 2 * U_curr(i,j,k);
+            }
+
+            // j == y_size-1 && k == z_size-1
+            {
+                int j = y_size-1;
+                int k = z_size-1;
+
+                double x_diff = U_curr(i-1,j,k) - 2 * U_curr(i,j,k) + U_curr(i+1,j,k);
+                double y_diff = U_curr(i,j-1,k) - 2 * U_curr(i,j,k) + xz_buff_next[i*z_size + k];
+                double z_diff = U_curr(i,j,k-1) - 2 * U_curr(i,j,k) + xy_buff_next[i*y_size + j];
+
+                double laplas = x_diff / (dx * dx) + y_diff / (dy * dy) + z_diff / (dz * dz);
+                U_prev(i,j,k) =  dt * dt * laplas - U_prev(i,j,k) + 2 * U_curr(i,j,k);
+            }
+        }
+
+
+        // i == 0 || x_size-1 && k == 0 || z_size-1
+        {
+            int i, k;
+            double x_diff, y_diff, z_diff, laplas;
+            i = from;
+            if (i == 0) {
+                for (int j = 1; j < y_size-1; j++) {
+                    k = 0;
+
+                    x_diff = yz_buff_prev[j*z_size + k] - 2 * U_curr(i,j,k) + U_curr(i+1,j,k);
+                    y_diff = U_curr(i,j-1,k) - 2 * U_curr(i,j,k) + U_curr(i,j+1,k);
+                    z_diff = xy_buff_prev[i*y_size + j] - 2 * U_curr(i,j,k) + U_curr(i,j,k+1);
+
+                    laplas = x_diff / (dx * dx) + y_diff / (dy * dy) + z_diff / (dz * dz);
+                    U_prev(i,j,k) =  dt * dt * laplas - U_prev(i,j,k) + 2 * U_curr(i,j,k);
+                }
+
+                for (int j = 1; j < y_size-1; j++) {
+                    k = z_size-1;
+
+                    x_diff = yz_buff_prev[j*z_size + k] - 2 * U_curr(i,j,k) + U_curr(i+1,j,k);
+                    y_diff = U_curr(i,j-1,k) - 2 * U_curr(i,j,k) + U_curr(i,j+1,k);
+                    z_diff = U_curr(i,j,k-1) - 2 * U_curr(i,j,k) + xy_buff_next[i*y_size + j];
+
+                    laplas = x_diff / (dx * dx) + y_diff / (dy * dy) + z_diff / (dz * dz);
+                    U_prev(i,j,k) =  dt * dt * laplas - U_prev(i,j,k) + 2 * U_curr(i,j,k);
+                }
+            }
+
+            i = to-1;
+            if (i == x_size-1) {
+                for (int j = 1; j < y_size-1; j++) {
+                    k = 0;
+
+                    x_diff = U_curr(i-1,j,k) - 2 * U_curr(i,j,k) + yz_buff_next[j*z_size + k];
+                    y_diff = U_curr(i,j-1,k) - 2 * U_curr(i,j,k) + U_curr(i,j+1,k);
+                    z_diff = xy_buff_prev[i*y_size + j] - 2 * U_curr(i,j,k) + U_curr(i,j,k+1);
+
+                    laplas = x_diff / (dx * dx) + y_diff / (dy * dy) + z_diff / (dz * dz);
+                    U_prev(i,j,k) =  dt * dt * laplas - U_prev(i,j,k) + 2 * U_curr(i,j,k);
+                }
+
+                for (int j = 1; j < y_size-1; j++) {
+                    k = z_size-1;
+
+                    x_diff = U_curr(i-1,j,k) - 2 * U_curr(i,j,k) + yz_buff_next[j*z_size + k];
+                    y_diff = U_curr(i,j-1,k) - 2 * U_curr(i,j,k) + U_curr(i,j+1,k);
+                    z_diff = U_curr(i,j,k-1) - 2 * U_curr(i,j,k) + xy_buff_next[i*y_size + j];
+
+                    laplas = x_diff / (dx * dx) + y_diff / (dy * dy) + z_diff / (dz * dz);
+                    U_prev(i,j,k) =  dt * dt * laplas - U_prev(i,j,k) + 2 * U_curr(i,j,k);
+                }
+            }
+        }
+
+        // i == 0 || x_size-1 && j == 0 || y_size-1
+        {
+            int i, j;
+            double x_diff, y_diff, z_diff, laplas;
+            i = from;
+            if (i == 0) {
+                for (int k = 1; k < z_size-1; k++) {
+                    j = 0;
+
+                    x_diff = yz_buff_prev[j*z_size + k] - 2 * U_curr(i,j,k) + U_curr(i+1,j,k);
+                    y_diff = xz_buff_prev[i*z_size + k] - 2 * U_curr(i,j,k) + U_curr(i,j+1,k);
+                    z_diff = U_curr(i,j,k-1) - 2 * U_curr(i,j,k) + U_curr(i,j,k+1);
+
+                    laplas = x_diff / (dx * dx) + y_diff / (dy * dy) + z_diff / (dz * dz);
+                    U_prev(i,j,k) =  dt * dt * laplas - U_prev(i,j,k) + 2 * U_curr(i,j,k);
+                }
+
+                for (int k = 1; k < z_size-1; k++) {
+                    j = y_size-1;
+
+                    x_diff = yz_buff_prev[j*z_size + k] - 2 * U_curr(i,j,k) + U_curr(i+1,j,k);
+                    y_diff = U_curr(i,j-1,k) - 2 * U_curr(i,j,k) + xz_buff_next[i*z_size + k];
+                    z_diff = U_curr(i,j,k-1) - 2 * U_curr(i,j,k) + U_curr(i,j,k+1);
+
+                    laplas = x_diff / (dx * dx) + y_diff / (dy * dy) + z_diff / (dz * dz);
+                    U_prev(i,j,k) =  dt * dt * laplas - U_prev(i,j,k) + 2 * U_curr(i,j,k);
+                }
+            }
+
+            i = to-1;
+            if (i == x_size-1) {
+                for (int k = 1; k < z_size-1; k++) {
+                    j = 0;
+
+                    x_diff = U_curr(i-1,j,k) - 2 * U_curr(i,j,k) + yz_buff_next[j*z_size + k];
+                    y_diff = xz_buff_prev[i*z_size + k] - 2 * U_curr(i,j,k) + U_curr(i,j+1,k);
+                    z_diff = U_curr(i,j,k-1) - 2 * U_curr(i,j,k) + U_curr(i,j,k+1);
+
+                    laplas = x_diff / (dx * dx) + y_diff / (dy * dy) + z_diff / (dz * dz);
+                    U_prev(i,j,k) =  dt * dt * laplas - U_prev(i,j,k) + 2 * U_curr(i,j,k);
+                }
+
+                for (int k = 1; k < z_size-1; k++) {
+                    j = y_size-1;
+
+                    x_diff = U_curr(i-1,j,k) - 2 * U_curr(i,j,k) + yz_buff_next[j*z_size + k];
+                    y_diff = U_curr(i,j-1,k) - 2 * U_curr(i,j,k) + xz_buff_next[i*z_size + k];
+                    z_diff = U_curr(i,j,k-1) - 2 * U_curr(i,j,k) + U_curr(i,j,k+1);
+
+                    laplas = x_diff / (dx * dx) + y_diff / (dy * dy) + z_diff / (dz * dz);
+                    U_prev(i,j,k) =  dt * dt * laplas - U_prev(i,j,k) + 2 * U_curr(i,j,k);
+                }
+            }
+        }
+
+        // Now we need to process 8 corners
+        {
+            int i, j, k;
+            double x_diff, y_diff, z_diff, laplas;
+            i = from;
+            if (i == 0) {
+                j = 0;
+                k = 0;
+
+                x_diff = yz_buff_prev[j*z_size + k] - 2 * U_curr(i,j,k) + U_curr(i+1,j,k);
+                y_diff = xz_buff_prev[i*z_size + k] - 2 * U_curr(i,j,k) + U_curr(i,j+1,k);
+                z_diff = xy_buff_prev[i*y_size + j] - 2 * U_curr(i,j,k) + U_curr(i,j,k+1);
+
+                laplas = x_diff / (dx * dx) + y_diff / (dy * dy) + z_diff / (dz * dz);
+                U_prev(i,j,k) =  dt * dt * laplas - U_prev(i,j,k) + 2 * U_curr(i,j,k);
+
+                j = 0;
+                k = z_size-1;
+
+                x_diff = yz_buff_prev[j*z_size + k] - 2 * U_curr(i,j,k) + U_curr(i+1,j,k);
+                y_diff = xz_buff_prev[i*z_size + k] - 2 * U_curr(i,j,k) + U_curr(i,j+1,k);
+                z_diff = U_curr(i,j,k-1) - 2 * U_curr(i,j,k) + xy_buff_next[i*y_size + j];
+
+                laplas = x_diff / (dx * dx) + y_diff / (dy * dy) + z_diff / (dz * dz);
+                U_prev(i,j,k) =  dt * dt * laplas - U_prev(i,j,k) + 2 * U_curr(i,j,k);
+
+                j = y_size-1;
+                k = 0;
+
+                x_diff = yz_buff_prev[j*z_size + k] - 2 * U_curr(i,j,k) + U_curr(i+1,j,k);
+                y_diff = U_curr(i,j-1,k) - 2 * U_curr(i,j,k) + xz_buff_next[i*z_size + k];
+                z_diff = xy_buff_prev[i*y_size + j] - 2 * U_curr(i,j,k) + U_curr(i,j,k+1);
+
+                laplas = x_diff / (dx * dx) + y_diff / (dy * dy) + z_diff / (dz * dz);
+                U_prev(i,j,k) =  dt * dt * laplas - U_prev(i,j,k) + 2 * U_curr(i,j,k);
+
+                j = y_size-1;
+                k = z_size-1;
+
+                x_diff = yz_buff_prev[j*z_size + k] - 2 * U_curr(i,j,k) + U_curr(i+1,j,k);
+                y_diff = U_curr(i,j-1,k) - 2 * U_curr(i,j,k) + xz_buff_next[i*z_size + k];
+                z_diff = U_curr(i,j,k-1) - 2 * U_curr(i,j,k) + xy_buff_next[i*y_size + j];
+
+                laplas = x_diff / (dx * dx) + y_diff / (dy * dy) + z_diff / (dz * dz);
+                U_prev(i,j,k) =  dt * dt * laplas - U_prev(i,j,k) + 2 * U_curr(i,j,k);
+            }
+
+            i = to-1;
+            if (i == x_size-1) {
+
+                j = 0;
+                k = 0;
+
+                x_diff = U_curr(i-1,j,k) - 2 * U_curr(i,j,k) + yz_buff_next[j*z_size + k];
+                y_diff = xz_buff_prev[i*z_size + k] - 2 * U_curr(i,j,k) + U_curr(i,j+1,k);
+                z_diff = xy_buff_prev[i*y_size + j] - 2 * U_curr(i,j,k) + U_curr(i,j,k+1);
+
+                laplas = x_diff / (dx * dx) + y_diff / (dy * dy) + z_diff / (dz * dz);
+                U_prev(i,j,k) =  dt * dt * laplas - U_prev(i,j,k) + 2 * U_curr(i,j,k);
+
+                j = 0;
+                k = z_size-1;
+
+                x_diff = U_curr(i-1,j,k) - 2 * U_curr(i,j,k) + yz_buff_next[j*z_size + k];
+                y_diff = xz_buff_prev[i*z_size + k] - 2 * U_curr(i,j,k) + U_curr(i,j+1,k);
+                z_diff = U_curr(i,j,k-1) - 2 * U_curr(i,j,k) + xy_buff_next[i*y_size + j];
+
+                laplas = x_diff / (dx * dx) + y_diff / (dy * dy) + z_diff / (dz * dz);
+                U_prev(i,j,k) =  dt * dt * laplas - U_prev(i,j,k) + 2 * U_curr(i,j,k);
+
+                j = y_size-1;
+                k = 0;
+
+                x_diff = U_curr(i-1,j,k) - 2 * U_curr(i,j,k) + yz_buff_next[j*z_size + k];
+                y_diff = U_curr(i,j-1,k) - 2 * U_curr(i,j,k) + xz_buff_next[i*z_size + k];
+                z_diff = xy_buff_prev[i*y_size + j] - 2 * U_curr(i,j,k) + U_curr(i,j,k+1);
+
+                laplas = x_diff / (dx * dx) + y_diff / (dy * dy) + z_diff / (dz * dz);
+                U_prev(i,j,k) =  dt * dt * laplas - U_prev(i,j,k) + 2 * U_curr(i,j,k);
+
+                j = y_size-1;
+                k = z_size-1;
+
+                x_diff = U_curr(i-1,j,k) - 2 * U_curr(i,j,k) + yz_buff_next[j*z_size + k];
+                y_diff = U_curr(i,j-1,k) - 2 * U_curr(i,j,k) + xz_buff_next[i*z_size + k];
+                z_diff = U_curr(i,j,k-1) - 2 * U_curr(i,j,k) + xy_buff_next[i*y_size + j];
+
+                laplas = x_diff / (dx * dx) + y_diff / (dy * dy) + z_diff / (dz * dz);
+                U_prev(i,j,k) =  dt * dt * laplas - U_prev(i,j,k) + 2 * U_curr(i,j,k);
             }
         }
 
