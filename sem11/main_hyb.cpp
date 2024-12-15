@@ -3,6 +3,7 @@
 #include <math.h>
 #include <cstring>
 
+#include <omp.h>
 #include <mpi.h>
 
 #include <sys/time.h>
@@ -25,6 +26,7 @@ static inline double timer() {
 
 
 void calc_analytical(Field& U, int x_size, int y_size, int z_size, int* cart_coords, double dx, double dy, double dz, int Lx, int Ly, int Lz, double t) {
+#pragma omp parallel for
     for (int i = 0; i < x_size; i++) {
         for (int j = 0; j < y_size; j++) {
             for (int k = 0; k < z_size; k++) {
@@ -41,6 +43,7 @@ void calc_analytical(Field& U, int x_size, int y_size, int z_size, int* cart_coo
 double max_norm(const Field& U, int x_size, int y_size, int z_size, int*cart_coords, double dx, double dy, double dz, int Lx, int Ly, int Lz, double t) {
     double max_norm = 0.0;
 
+#pragma omp parallel for reduction(max:max_norm)
     for (int i = 0; i < x_size; i++) {
         for (int j = 0; j < y_size; j++) {
             for (int k = 0; k < z_size; k++) {
@@ -78,6 +81,8 @@ int main(int argc, char** argv) {
     int N = 128;
     int K = 20;
     double dt = 1.e-5;
+//    int num_threads = 1;
+    int num_threads = omp_get_max_threads();
 
     while (argc_indx < argc) {
         if (!strcmp(argv[argc_indx], "-domain")) {
@@ -92,6 +97,9 @@ int main(int argc, char** argv) {
         } else if (!strcmp(argv[argc_indx], "-dt")) {
             argc_indx++;
             dt = atof(argv[argc_indx]);
+        } else if (!strcmp(argv[argc_indx], "-threads")) {
+            argc_indx++;
+            num_threads = atoi(argv[argc_indx]);
         } else if (!strcmp(argv[argc_indx], "-help")) {
             if (!rank)
                 printf("Usage: ./prog_mpi -domain L -nodes N -steps K -dt dt -threads t\n");
@@ -101,6 +109,8 @@ int main(int argc, char** argv) {
             argc_indx++;
         }
     }
+
+    omp_set_num_threads(num_threads);
 
     int dims[3] = {0, 0, 0};
 
@@ -241,6 +251,7 @@ int main(int argc, char** argv) {
         MPI_Irecv(xy_buff_prev, x_size*y_size, MPI_DOUBLE, rank_below, 4, MPI_COMM_WORLD, &requests[9]);
         MPI_Irecv(xy_buff_next, x_size*y_size, MPI_DOUBLE, rank_above, 5, MPI_COMM_WORLD, &requests[11]);
 
+#pragma omp parallel for
         for (int i = 1; i < x_size-1; i++) {
             for (int j = 1; j < y_size-1; j++) {
                 for (int k = 1; k < z_size-1; k++) {
@@ -263,6 +274,7 @@ int main(int argc, char** argv) {
         {
             int i = from;
             if (i == 0) {
+#pragma omp parallel for
                 for (int j = 1; j < y_size-1; j++) {
                     for (int k = 1; k < z_size-1; k++) {
                         double x_diff = yz_buff_prev[j*z_size + k] - 2 * U_curr(i,j,k) + U_curr(i+1,j,k);
@@ -278,6 +290,7 @@ int main(int argc, char** argv) {
 
             i = to-1;
             if (i == x_size-1) {
+#pragma omp parallel for
                 for (int j = 1; j < y_size-1; j++) {
                     for (int k = 1; k < z_size-1; k++) {
                         double x_diff = U_curr(i-1,j,k) - 2 * U_curr(i,j,k) + yz_buff_next[j*z_size + k];
@@ -295,6 +308,7 @@ int main(int argc, char** argv) {
         // j == 0 or j == y_size - 1
         {
             int j = 0;
+#pragma omp parallel for
             for (int i = 1; i < x_size-1; i++) {
                 for (int k = 1; k < z_size-1; k++) {
                     double x_diff = U_curr(i-1,j,k) - 2 * U_curr(i,j,k) + U_curr(i+1,j,k);
@@ -308,6 +322,7 @@ int main(int argc, char** argv) {
             }
 
             j = y_size-1;
+#pragma omp paralle for
             for (int i = 1; i < x_size-1; i++) {
                 for (int k = 1; k < z_size-1; k++) {
                     double x_diff = U_curr(i-1,j,k) - 2 * U_curr(i,j,k) + U_curr(i+1,j,k);
@@ -324,6 +339,7 @@ int main(int argc, char** argv) {
         // k == 0 or k == z_size-1
         {
             int k = 0;
+#pragma omp parallel for
             for (int i = 1; i < x_size-1; i++) {
                 for (int j = 1; j < y_size-1; j++) {
                     double x_diff = U_curr(i-1,j,k) - 2 * U_curr(i,j,k) + U_curr(i+1,j,k);
@@ -337,6 +353,7 @@ int main(int argc, char** argv) {
             }
 
             k = z_size-1;
+#pragma omp parallel for
             for (int i = 1; i < x_size-1; i++) {
                 for (int j = 1; j < y_size-1; j++) {
                     double x_diff = U_curr(i-1,j,k) - 2 * U_curr(i,j,k) + U_curr(i+1,j,k);
@@ -622,6 +639,7 @@ int main(int argc, char** argv) {
         printf("\n ===================================\n\n");
         printf(" Processes:  %d\n", world_size);
         printf(" Grid:       %d x %d x %d\n", dims[0], dims[1], dims[2]);
+        printf(" Threads:    %d\n", num_threads);
         printf(" Domain:     %1.2f x %1.2f x %1.2f\n", Lx, Ly, Lz);
         printf(" Nodes:      %d x %d x %d\n", N, N, N);
         printf(" Time steps: %d\n", K);

@@ -10,13 +10,19 @@ else
 CXXFLAGS += -m64 -mavx2 -march=core-avx2
 endif
 
-all: clean omp mpi
+all: clean prog omp mpi hyb
+
+prog:
+	$(CXX) $(CXXFLAGS) main.cpp field.cpp -o prog
 
 omp:
-	$(CXX) $(CXXFLAGS) main.cpp field.cpp -o prog
+	$(CXX) $(CXXFLAGS) main_omp.cpp field.cpp -o prog_omp
 
 mpi:
 	$(MPICXX) $(CXXFLAGS) main_mpi.cpp field.cpp -o prog_mpi
+
+hyb:
+	$(MPICXX) $(CXXFLAGS) main_hyb.cpp field.cpp -o prog_hyb
 
 clean::
 	rm -f prog* a.out

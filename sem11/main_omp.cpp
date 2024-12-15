@@ -1,5 +1,7 @@
 #include "field.h"
 
+#include "omp.h"
+
 #include <math.h>
 #include <cstring>
 
@@ -30,6 +32,8 @@ int main(int argc, char** argv) {
     int N = 128;
     int K = 20;
     double dt = 1.e-5;
+//    int num_threads = 1;
+    int num_threads = omp_get_max_threads();
 
     while (argc_indx < argc) {
         if (!strcmp(argv[argc_indx], "-domain")) {
@@ -44,6 +48,9 @@ int main(int argc, char** argv) {
         } else if (!strcmp(argv[argc_indx], "-dt")) {
             argc_indx++;
             dt = atof(argv[argc_indx]);
+        } else if (!strcmp(argv[argc_indx], "-threads")) {
+            argc_indx++;
+            num_threads = atoi(argv[argc_indx]);
         } else if (!strcmp(argv[argc_indx], "-help")) {
             printf("Usage: ./prog -domain L -nodes N -steps K -dt dt -threads t\n");
             return 0;
@@ -51,6 +58,8 @@ int main(int argc, char** argv) {
             argc_indx++;
         }
     }
+
+    omp_set_num_threads(num_threads);
 
     double Lx = L, Ly = L, Lz = L;
 
@@ -68,6 +77,7 @@ int main(int argc, char** argv) {
     double t1 = timer();
 
     // Calc U0 and U1
+#pragma omp parallel for
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < N; j++) {
             for (int k = 0; k < N; k++) {
@@ -82,6 +92,7 @@ int main(int argc, char** argv) {
 // Main cycle
     for (int step = 0; step < K; step++) {
 
+#pragma omp parallel for
         for (int i = 1; i < N-1; i++) {
             for (int j = 0; j < N; j++) {
                 for (int k = 0; k < N; k++) {
@@ -115,6 +126,7 @@ int main(int argc, char** argv) {
 
     double max_err = 0.0;
 
+#pragma omp parallel for reduction(max:max_err)
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < N; j++) {
             for (int k = 0; k < N; k++) {
@@ -128,6 +140,7 @@ int main(int argc, char** argv) {
     double t2 = timer();
 
     printf("\n ===================================\n\n");
+    printf(" Threads:    %d\n", num_threads);
     printf(" Domain:     %1.2f x %1.2f x %1.2f\n", Lx, Ly, Lz);
     printf(" Nodes:      %d x %d x %d\n", N, N, N);
     printf(" Time steps: %d\n", K);
